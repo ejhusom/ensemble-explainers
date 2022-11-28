@@ -1,5 +1,5 @@
 profile:
-    dataset: cnc_milling
+    dataset: cnc_milling_with_toolwear
 
 clean:
     target: X1_ActualPosition
@@ -64,7 +64,7 @@ scale:
     output:
 
 sequentialize:
-    window_size: 5
+    window_size: 1
     overlap: 0
     target_size: 1
     shuffle_samples: False
@@ -76,7 +76,7 @@ train:
     hyperparameter_tuning: False
 
     # Parameters for deep learning (dnn, cnn, lstm etc):
-    n_epochs: 200
+    n_epochs: 10
     early_stopping: True
     patience: 20
     activation_function: relu

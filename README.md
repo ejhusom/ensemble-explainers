@@ -1,9 +1,6 @@
-# d2m
+# Ensemble Explainers
 
-Data to model - d2m.
-
-This is a project using [DVC](https://dvc.org/) for setting up a flexible and
-robust pipeline for machine learning experiments.
+This project aims to create trustworthy machine learning models by using Ensemble Explainers.
 
 
 ## Usage

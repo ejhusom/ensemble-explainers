@@ -18,6 +18,7 @@ import pandas as pd
 import plotly
 import plotly.graph_objects as go
 import seaborn as sn
+import shap
 import tensorflow as tf
 import yaml
 from joblib import load
@@ -163,6 +164,61 @@ def evaluate(model_filepath, train_filepath, test_filepath):
         pass
 
     save_predictions(pd.DataFrame(y_pred))
+
+    # Read name of input columns
+    input_columns = pd.read_csv(INPUT_FEATURES_PATH, header=None)
+
+    # Convert the input columns into a list
+    input_columns = input_columns.iloc[1:,1].to_list()
+
+    # Load training data
+    train = np.load(train_filepath)
+    X_train = train["X"]
+
+    # Extract a summary of the training inputs, to reduce the amount of
+    # compute needed to use SHAP
+    X_summary = shap.kmeans(X_train, 20)
+
+    # Use a SHAP explainer on the summary of training inputs
+    ex = shap.KernelExplainer(model.predict, X_summary)
+    # ex = shap.KernelExplainer(model.predict, shap.sample(X_train, 100))
+    # ex = shap.TreeExplainer(model)
+
+    # Single prediction explanation
+    single_prediction = X_test[0]
+    shap_value = ex.shap_values(single_prediction)[0]
+
+    shap.force_plot(ex.expected_value, shap_value, np.around(single_prediction), show=True,
+            matplotlib=True, feature_names=input_columns)
+
+    plt.savefig(PLOTS_PATH / "shap_force_plot_single.png")
+
+    # plt.figure()
+    # shap.force_plot(ex.expected_value, shap_values[0], shap.sample(X_test, 10), show=False,
+            # matplotlib=True, feature_names=input_columns)
+    # plt.savefig(PLOTS_PATH / "shap_force_plot_single.png")
+
+    print("Making summary plot...")
+
+    # Get SHAP values from a selection of the test data
+    X_values = shap.sample(X_test, 20)
+    shap_values = ex.shap_values(X_values)[0]
+
+    print(X_test.shape)
+    print(shap_value.shape)
+    print(shap_values.shape)
+    print(shap_value[0].shape)
+    print(shap_values[0].shape)
+    print(len(input_columns))
+    # return 0
+
+    plt.figure()
+    shap.summary_plot(shap_values, X_values,
+            feature_names=input_columns, plot_size=(8,5), show=False)
+            # plot_size=(8,5), show=False)
+    plt.savefig(PLOTS_PATH / "shap_summary_plot.png", bbox_inches='tight', dpi=300)
+
+
 
 def plot_confusion(y_test, y_pred):
     """Plotting confusion matrix of a classification model."""
