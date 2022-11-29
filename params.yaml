@@ -1,8 +1,10 @@
 profile:
     dataset: cnc_milling_with_toolwear
+    # dataset: bhp_fitbit
 
 clean:
     target: X1_ActualPosition
+    # target: fas
     classification: False
     onehot_encode_target: False
     combine_files: False
@@ -13,8 +15,18 @@ clean:
 featurize:
     # If empty, all input variables are used
     variables_to_include:
-        # - variable1
-        # - variable2
+      # - age
+      # - heart_rate_bpm_min
+      # - bmi
+      # - resting_heart_rate
+      # - heart_rate_bpm_mean
+      # - levels.summary.light.minutes
+      # - weight
+      # - sedentary_minutes
+      # # Negative correlation:
+      # - gender
+      # - height
+      # - very_active_minutes
 
     # By setting this to True, the add_-options below are overrided.
     use_all_engineered_features_on_all_variables: False
@@ -65,14 +77,14 @@ scale:
 
 sequentialize:
     window_size: 10
-    overlap: 0
+    overlap: 9
     target_size: 1
     shuffle_samples: False
     future_predict: False
 
 train:
     seed: 2020
-    learning_method: rnn
+    learning_method: cnn
     hyperparameter_tuning: False
 
     # Parameters for deep learning (dnn, cnn, lstm etc):
