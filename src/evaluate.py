@@ -67,6 +67,7 @@ def evaluate(model_filepath, train_filepath, test_filepath):
     params_train = yaml.safe_load(open("params.yaml"))["train"]
     params_split = yaml.safe_load(open("params.yaml"))["split"]
     classification = yaml.safe_load(open("params.yaml"))["clean"]["classification"]
+    window_size = yaml.safe_load(open("params.yaml"))["sequentialize"]["window_size"]
     onehot_encode_target = yaml.safe_load(open("params.yaml"))["clean"][
         "onehot_encode_target"
     ]
@@ -142,23 +143,23 @@ def evaluate(model_filepath, train_filepath, test_filepath):
 
     # Print feature importances of the ML algorithm supports it.
     try:
-        feature_importances = model.feature_importances_
-        imp = list()
-        for i, f in enumerate(feature_importances):
-            imp.append((f, i))
-
-        sorted_feature_importances = sorted(imp)[::-1]
         input_columns = pd.read_csv(INPUT_FEATURES_PATH, header=None)
+        input_columns = input_columns.iloc[1:,1].to_list()
+        input_columns_sequence = []
 
-        print("-------------------------")
+        for c in input_columns:
+            for i in range(window_size):
+                input_columns_sequence.append(c + f"_{i}")
+
+        feature_importances = model.feature_importances_
+
         print("Feature importances:")
 
-        for i in range(len(sorted_feature_importances)):
+        for i in range(len(feature_importances)):
             print(
-                f"Feature: {input_columns.iloc[i,0]}. Importance: {feature_importances[i]:.2f}"
+                f"{input_columns_sequence[i]}. Importance: {feature_importances[i]:.2f}"
             )
 
-        print("-------------------------")
     except:
         pass
 

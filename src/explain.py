@@ -15,22 +15,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import shap
+import tensorflow as tf
 import yaml
 
 from joblib import load
 from tensorflow.keras import models
+tf.compat.v1.disable_v2_behavior()
 
 from config import (
     DATA_PATH,
     INPUT_FEATURES_PATH,
+    INPUT_FEATURES_SEQUENCE_PATH,
     INTERVALS_PLOT_PATH,
     METRICS_FILE_PATH,
     NON_DL_METHODS,
+    NON_SEQUENCE_LEARNING_METHODS,
     OUTPUT_FEATURES_PATH,
     PLOTS_PATH,
     PREDICTION_PLOT_PATH,
     PREDICTIONS_FILE_PATH,
     PREDICTIONS_PATH,
+    SEQUENCE_LEARNING_METHODS
 )
 
 def explain(
@@ -71,45 +76,99 @@ def explain(
     # Convert the input columns into a list
     input_columns = input_columns.iloc[1:,1].to_list()
 
-    # Extract a summary of the training inputs, to reduce the amount of
-    # compute needed to use SHAP
-    X_train_background = shap.kmeans(X_train, number_of_background_samples)
-    X_test_summary = shap.sample(X_train, number_of_summary_samples)
+    if learning_method in NON_SEQUENCE_LEARNING_METHODS:
+        if window_size > 1:
+            input_columns_sequence = []
 
-    # Use a SHAP explainer on the summary of training inputs
-    explainer = shap.KernelExplainer(model.predict, X_train_background)
+            for c in input_columns:
+                for i in range(window_size):
+                    input_columns_sequence.append(c + f"_{i}")
 
-    # Single prediction explanation
-    single_sample = X_test[0]
-    single_shap_value = explainer.shap_values(single_sample)
-    shap_values = explainer.shap_values(X_test_summary)
+            input_columns = input_columns_sequence
 
-    if type(single_shap_value) == list:
+        # Extract a summary of the training inputs, to reduce the amount of
+        # compute needed to use SHAP
+        X_train_background = shap.kmeans(X_train, number_of_background_samples)
+        X_test_summary = shap.sample(X_train, number_of_summary_samples)
+
+        # Use a SHAP explainer on the summary of training inputs
+        explainer = shap.KernelExplainer(model.predict, X_train_background)
+
+        # Single prediction explanation
+        single_sample = X_test[0]
+        single_shap_value = explainer.shap_values(single_sample)
+        shap_values = explainer.shap_values(X_test_summary)
+
+        if type(single_shap_value) == list:
+            single_shap_value = single_shap_value[0]
+            shap_values = shap_values[0]
+
+        # SHAP force plot: Single prediction
+        shap_force_plot_single = shap.force_plot(explainer.expected_value, single_shap_value,
+                np.around(single_sample), show=True, feature_names=input_columns)
+        shap.save_html(str(PLOTS_PATH) + "/shap_force_plot_single.html",
+                shap_force_plot_single)
+
+        # SHAP force plot: Multiple prediction
+        shap_force_plot = shap.force_plot(explainer.expected_value, shap_values,
+                X_test_summary, show=True, feature_names=input_columns)
+        shap.save_html(str(PLOTS_PATH) + "/shap_force_plot.html", shap_force_plot)
+
+        # SHAP summary plot
+        shap.summary_plot(shap_values, X_test_summary,
+                feature_names=input_columns, plot_size=(8,5), show=True)
+        plt.savefig(PLOTS_PATH / "shap_summary_plot.png", bbox_inches='tight', dpi=300)
+    else:
+        # Extract a summary of the training inputs, to reduce the amount of
+        # compute needed to use SHAP
+        X_train_background = shap.sample(X_train, number_of_background_samples)
+        X_test_summary = shap.sample(X_train, number_of_summary_samples)
+
+        # Use a SHAP explainer on the summary of training inputs
+        # explainer = shap.DeepExplainer((model.layers[0].input, model.layers[-1].output), X_train_background)
+        explainer = shap.DeepExplainer(model, X_train_background)
+
+        # Single prediction explanation
+        single_sample = X_test[:1]
+        single_shap_value = explainer.shap_values(single_sample)
+        shap_values = explainer.shap_values(X_test_summary)
+
+        print("===================")
+        print(len(shap_values))
+
         single_shap_value = single_shap_value[0]
         shap_values = shap_values[0]
 
-    print("===========================")
-    print(f"Single shap value shape: {single_shap_value.shape}")
-    print(f"Multiple shap values shape: {shap_values.shape}")
-    print("===========================")
-    print(single_shap_value[0].shape)
-    print(shap_values[0].shape)
 
-    # SHAP force plot: Single prediction
-    shap.force_plot(explainer.expected_value, single_shap_value,
-            np.around(single_sample), show=True, matplotlib=True,
-            feature_names=input_columns)
-    plt.savefig(PLOTS_PATH / "shap_force_plot_single.png")
+        print("--------------------")
+        print(single_shap_value.shape)
+        print(single_sample.shape)
+        print(shap_values.shape)
+        print(explainer.expected_value.shape)
+        print(X_test_summary.shape)
+        print(explainer.expected_value)
+        print(explainer.expected_value[0])
+        print("===================")
 
-    # SHAP force plot: Multiple prediction
-    shap_force_plot = shap.force_plot(explainer.expected_value, shap_values,
-            X_test_summary, show=True, feature_names=input_columns)
-    shap.save_html(str(PLOTS_PATH) + "/shap_force_plot.html", shap_force_plot)
+        # SHAP force plot: Single prediction
+        shap_force_plot_single = shap.force_plot(explainer.expected_value, shap_values[0,:],
+                X_test_summary[0,:], feature_names=input_columns)
+        # shap.force_plot(explainer.expected_value[0], single_shap_value, single_sample)
+                # np.around(single_sample), show=True, matplotlib=True,
+                # feature_names=input_columns)
+        shap.save_html(str(PLOTS_PATH) + "/shap_force_plot_single.html",
+                shap_force_plot_single)
 
-    # SHAP summary plot
-    shap.summary_plot(shap_values, X_test_summary,
-            feature_names=input_columns, plot_size=(8,5), show=False)
-    plt.savefig(PLOTS_PATH / "shap_summary_plot.png", bbox_inches='tight', dpi=300)
+        # SHAP force plot: Multiple prediction
+        # shap_force_plot = shap.force_plot(explainer.expected_value[0], shap_values,
+        #         X_test_summary, show=True, feature_names=input_columns)
+        # shap_force_plot = shap.force_plot(explainer.expected_value, shap_values, X_test_summary)
+        # shap.save_html(str(PLOTS_PATH) + "/shap_force_plot.html", shap_force_plot)
+
+        # SHAP summary plot
+        # shap.summary_plot(shap_values, X_test_summary,
+        #         feature_names=input_columns, plot_size=(8,5), show=False)
+        # plt.savefig(PLOTS_PATH / "shap_summary_plot.png", bbox_inches='tight', dpi=300)
 
 if __name__ == "__main__":
 
