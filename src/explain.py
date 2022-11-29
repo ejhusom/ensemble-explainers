@@ -153,22 +153,13 @@ def explain(
         # SHAP force plot: Single prediction
         shap_force_plot_single = shap.force_plot(explainer.expected_value, shap_values[0,:],
                 X_test_summary[0,:], feature_names=input_columns)
-        # shap.force_plot(explainer.expected_value[0], single_shap_value, single_sample)
-                # np.around(single_sample), show=True, matplotlib=True,
-                # feature_names=input_columns)
         shap.save_html(str(PLOTS_PATH) + "/shap_force_plot_single.html",
                 shap_force_plot_single)
 
-        # SHAP force plot: Multiple prediction
-        # shap_force_plot = shap.force_plot(explainer.expected_value[0], shap_values,
-        #         X_test_summary, show=True, feature_names=input_columns)
-        # shap_force_plot = shap.force_plot(explainer.expected_value, shap_values, X_test_summary)
-        # shap.save_html(str(PLOTS_PATH) + "/shap_force_plot.html", shap_force_plot)
-
         # SHAP summary plot
-        # shap.summary_plot(shap_values, X_test_summary,
-        #         feature_names=input_columns, plot_size=(8,5), show=False)
-        # plt.savefig(PLOTS_PATH / "shap_summary_plot.png", bbox_inches='tight', dpi=300)
+        shap.summary_plot(shap_values, X_test_summary,
+                feature_names=input_columns, plot_size=(8,5), show=False)
+        plt.savefig(PLOTS_PATH / "shap_summary_plot.png", bbox_inches='tight', dpi=300)
 
 if __name__ == "__main__":
 
