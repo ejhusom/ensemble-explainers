@@ -72,7 +72,7 @@ sequentialize:
 
 train:
     seed: 2020
-    learning_method: dnn
+    learning_method: dt
     hyperparameter_tuning: False
 
     # Parameters for deep learning (dnn, cnn, lstm etc):
@@ -99,3 +99,7 @@ train:
 
 evaluate:
     show_inputs: True
+
+explain: 
+    number_of_background_samples: 10
+    number_of_summary_samples: 20
