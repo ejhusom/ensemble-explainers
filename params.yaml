@@ -76,19 +76,20 @@ scale:
     output:
 
 sequentialize:
-    window_size: 10
-    overlap: 9
+    window_size: 1
+    overlap: 0
     target_size: 1
     shuffle_samples: False
     future_predict: False
 
 train:
     seed: 2020
-    learning_method: cnn
+    ensemble: True
+    learning_method: dt
     hyperparameter_tuning: False
 
     # Parameters for deep learning (dnn, cnn, lstm etc):
-    n_epochs: 200
+    n_epochs: 10
     early_stopping: True
     patience: 50
     activation_function: relu

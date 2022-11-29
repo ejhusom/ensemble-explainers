@@ -66,6 +66,15 @@ NON_SEQUENCE_LEARNING_METHODS = [
     "gradientboosting",
 ]
 
+METHODS_IN_ENSEMBLE = [
+    "dnn",
+    "dt",
+    "rf",
+    "kn",
+    "gb",
+    "xgb"
+]
+
 
 # PATHS
 

@@ -58,6 +58,7 @@ import neural_networks as nn
 from config import (
     DATA_PATH,
     DL_METHODS,
+    METHODS_IN_ENSEMBLE,
     MODELS_FILE_PATH,
     MODELS_PATH,
     NON_DL_METHODS,
@@ -85,6 +86,9 @@ def train(filepath):
     onehot_encode_target = yaml.safe_load(open("params.yaml"))["clean"][
         "onehot_encode_target"
     ]
+
+    ensemble = params["ensemble"]
+
 
     output_columns = np.array(pd.read_csv(OUTPUT_FEATURES_PATH, index_col=0)).reshape(
         -1
@@ -118,6 +122,61 @@ def train(filepath):
         loss = "mse"
         metrics = "mse"
         monitor_metric = "loss"
+
+    # Create an ensemble
+    if ensemble:
+        model0 = nn.dnn(
+            n_features,
+            output_length=output_length,
+            activation_function=params["activation_function"],
+            output_activation=output_activation,
+            n_layers=params["n_layers"],
+            n_nodes=params["n_neurons"],
+            loss=loss,
+            metrics=metrics,
+            dropout=params["dropout"],
+            seed=params["seed"]
+        )
+        if classification:
+            model1 = DecisionTreeClassifier()
+            model2 = RandomForestClassifier()
+            model3 = KNeighborsClassifier()
+            model4 = GradientBoostingClassifier()
+            model5 = xgb.XGBClassifier()
+        else:
+            model1 = DecisionTreeRegressor()
+            model2 = RandomForestRegressor()
+            model3 = KNeighborsRegressor()
+            model4 = GradientBoostingRegressor()
+            model5 = xgb.XGBRegressor()
+
+        models = [
+                model0,
+                model1,
+                model2,
+                model3,
+                model4,
+                model5,
+        ]
+
+
+
+        for name, model in zip(METHODS_IN_ENSEMBLE, models):
+            if name in DL_METHODS:
+                history = model0.fit(
+                    X_train,
+                    y_train,
+                    epochs=params["n_epochs"],
+                    batch_size=params["batch_size"],
+                    validation_split=0.25,
+                )
+                model.save(MODELS_PATH  / f"model_{name}.h5")
+            else:
+                model.fit(X_train, y_train)
+                dump(model, MODELS_PATH / f"model_{name}.h5")
+
+        return 0
+
 
     # Build model
     if learning_method in DL_METHODS and params["hyperparameter_tuning"]:

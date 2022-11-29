@@ -9,6 +9,7 @@ Created:
 
 """
 import json
+import os
 import shutil
 import sys
 
@@ -39,8 +40,12 @@ import neural_networks as nn
 import neural_networks as nn
 from config import (
     DATA_PATH,
+    DL_METHODS,
     INPUT_FEATURES_PATH,
     INTERVALS_PLOT_PATH,
+    MODELS_FILE_PATH,
+    MODELS_PATH,
+    METHODS_IN_ENSEMBLE,
     METRICS_FILE_PATH,
     NON_DL_METHODS,
     OUTPUT_FEATURES_PATH,
@@ -60,6 +65,7 @@ def evaluate(model_filepath, train_filepath, test_filepath):
 
     """
 
+
     METRICS_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     # Load parameters
@@ -73,6 +79,7 @@ def evaluate(model_filepath, train_filepath, test_filepath):
     ]
     show_inputs = params["show_inputs"]
     learning_method = params_train["learning_method"]
+    ensemble = params_train["ensemble"]
 
     test = np.load(test_filepath)
     X_test = test["X"]
@@ -85,6 +92,82 @@ def evaluate(model_filepath, train_filepath, test_filepath):
 
     PREDICTIONS_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(y_test).to_csv(PREDICTIONS_PATH / "true_values.csv")
+
+    if ensemble:
+        model_names = []
+        y_preds = []
+        metrics = []
+
+        for f in os.listdir(MODELS_PATH):
+            if f.startswith("model"):
+                model_names.append(f)
+            
+        model_names = sorted(model_names)
+
+        
+        for name in model_names:
+            method = os.path.splitext(name)[0].split("_")[-1]
+            if method in DL_METHODS:
+                model = models.load_model(MODELS_PATH / name)
+            else:
+                model = load(MODELS_PATH / name)
+
+            y_pred = model.predict(X_test)
+            y_preds.append(y_pred)
+
+        if classification:
+
+            if onehot_encode_target:
+                y_test = np.argmax(y_test, axis=-1)
+
+            metrics = {}
+
+            for name, y_pred in zip(model_names, y_preds):
+                accuracy = accuracy_score(y_test, y_pred)
+                print(f"{name}: {accuracy}")
+                metrics[name] = accuracy
+
+            # plot_prediction(y_test, y_pred, info="Accuracy: {})".format(accuracy))
+            # plot_confusion(y_test, y_pred)
+
+            with open(METRICS_FILE_PATH, "w") as f:
+                json.dump(metrics, f)
+
+        # Regression:
+        else:
+            metrics = {}
+
+            for name, y_pred in zip(model_names, y_preds):
+                mse = mean_squared_error(y_test, y_pred)
+                rmse = mean_squared_error(y_test, y_pred, squared=False)
+                mape = mean_absolute_percentage_error(y_test, y_pred)
+                r2 = r2_score(y_test, y_pred)
+
+                # plot_prediction(y_test, y_pred, inputs=inputs, info=f"(R2: {r2:.2f})")
+                # plot_true_vs_pred(y_test, y_pred)
+
+                # print("MSE: {}".format(mse))
+                # print("RMSE: {}".format(rmse))
+                # print("MAPE: {}".format(mape))
+                print(f"{name} R2: {r2}")
+
+                metrics[name] = r2
+
+            # # Only plot predicted sequences if the output samples are sequences.
+            # if len(y_test.shape) > 1 and y_test.shape[1] > 1:
+            #     plot_sequence_predictions(y_test, y_pred)
+
+            # with open(METRICS_FILE_PATH, "w") as f:
+            #     json.dump(dict(mse=mse, rmse=rmse, mape=mape, r2=r2), f)
+            with open(METRICS_FILE_PATH, "w") as f:
+                json.dump(metrics, f)
+
+            # save_predictions(pd.DataFrame(y_pred))
+        
+        return 0
+    else:
+        model_filepath = MODELS_FILE_PATH
+
 
     # pandas data frame to store predictions and ground truth.
     df_predictions = None
