@@ -1,6 +1,9 @@
 # Ensemble Explainers
 
 This project aims to create trustworthy machine learning models by using Ensemble Explainers.
+It is a fork of the [d2m](https://github.com/ejhusom/d2m) pipeline.
+
+IMPORTANT: This pipeline is under heavy development, and instructions are not necessarily up to date.
 
 
 ## Usage

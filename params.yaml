@@ -111,8 +111,8 @@ train:
     unit_type: LSTM
 
 evaluate:
-    performance_metric: accuracy
-    threshold_for_ensemble_models: 0.9
+    performance_metric: auto
+    threshold_for_ensemble_models: auto
     show_inputs: True
 
 explain: 
