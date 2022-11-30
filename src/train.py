@@ -125,25 +125,28 @@ def train(filepath):
 
     # Create an ensemble
     if ensemble:
-        model0 = nn.dnn(
-            n_features,
-            output_length=output_length,
-            activation_function=params["activation_function"],
-            output_activation=output_activation,
-            n_layers=params["n_layers"],
-            n_nodes=params["n_neurons"],
-            loss=loss,
-            metrics=metrics,
-            dropout=params["dropout"],
-            seed=params["seed"]
-        )
+        # model0 = nn.dnn(
+        #     n_features,
+        #     output_length=output_length,
+        #     activation_function=params["activation_function"],
+        #     output_activation=output_activation,
+        #     n_layers=params["n_layers"],
+        #     n_nodes=params["n_neurons"],
+        #     loss=loss,
+        #     metrics=metrics,
+        #     dropout=params["dropout"],
+        #     seed=params["seed"]
+        # )
         if classification:
+            model0 = SVC()
             model1 = DecisionTreeClassifier()
             model2 = RandomForestClassifier()
             model3 = KNeighborsClassifier()
             model4 = GradientBoostingClassifier()
             model5 = xgb.XGBClassifier()
         else:
+            model0 = SVR()
+            model1 = DecisionTreeClassifier()
             model1 = DecisionTreeRegressor()
             model2 = RandomForestRegressor()
             model3 = KNeighborsRegressor()

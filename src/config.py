@@ -67,7 +67,8 @@ NON_SEQUENCE_LEARNING_METHODS = [
 ]
 
 METHODS_IN_ENSEMBLE = [
-    "dnn",
+    # "dnn",
+    "svm",
     "dt",
     "rf",
     "kn",
@@ -167,3 +168,6 @@ INPUT_SCALER_PATH = SCALER_PATH / "input_scaler.z"
 
 OUTPUT_SCALER_PATH = SCALER_PATH / "output_scaler.z"
 """Path to output scaler."""
+
+ADEQUATE_MODELS_PATH = ASSETS_PATH / "adequate_models"
+"""Path to list of adequate models."""

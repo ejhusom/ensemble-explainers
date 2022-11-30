@@ -53,5 +53,6 @@ assets/metrics/
 assets/scalers/
 assets/predictions/
 assets/features/
+assets/adequate_models/
 models.json
 

@@ -39,6 +39,7 @@ import neural_networks as nn
 
 import neural_networks as nn
 from config import (
+    ADEQUATE_MODELS_PATH,
     DATA_PATH,
     DL_METHODS,
     INPUT_FEATURES_PATH,
@@ -78,8 +79,23 @@ def evaluate(model_filepath, train_filepath, test_filepath):
         "onehot_encode_target"
     ]
     show_inputs = params["show_inputs"]
+    performance_metric = params["performance_metric"]
+    threshold_for_ensemble_models = params["threshold_for_ensemble_models"]
     learning_method = params_train["learning_method"]
     ensemble = params_train["ensemble"]
+
+    if performance_metric == "auto":
+        if classification:
+            performance_metric = "accuracy"
+        else:
+            performance_metric = "r2"
+
+    if threshold_for_ensemble_models == "auto":
+        if classification:
+            threshold_for_ensemble_models = 0.75
+        else:
+            threshold_for_ensemble_models = 0.5
+
 
     test = np.load(test_filepath)
     X_test = test["X"]
@@ -104,7 +120,6 @@ def evaluate(model_filepath, train_filepath, test_filepath):
             
         model_names = sorted(model_names)
 
-        
         for name in model_names:
             method = os.path.splitext(name)[0].split("_")[-1]
             if method in DL_METHODS:
@@ -114,6 +129,8 @@ def evaluate(model_filepath, train_filepath, test_filepath):
 
             y_pred = model.predict(X_test)
             y_preds.append(y_pred)
+
+        adequate_models = {}
 
         if classification:
 
@@ -127,6 +144,9 @@ def evaluate(model_filepath, train_filepath, test_filepath):
                 print(f"{name}: {accuracy}")
                 metrics[name] = accuracy
 
+                if accuracy >= threshold_for_ensemble_models:
+                    adequate_models[name] = accuracy
+
             # plot_prediction(y_test, y_pred, info="Accuracy: {})".format(accuracy))
             # plot_confusion(y_test, y_pred)
 
@@ -138,10 +158,18 @@ def evaluate(model_filepath, train_filepath, test_filepath):
             metrics = {}
 
             for name, y_pred in zip(model_names, y_preds):
+                metrics[name] = {}
+
                 mse = mean_squared_error(y_test, y_pred)
                 rmse = mean_squared_error(y_test, y_pred, squared=False)
                 mape = mean_absolute_percentage_error(y_test, y_pred)
                 r2 = r2_score(y_test, y_pred)
+
+                metrics[name]["mse"] = mse
+                metrics[name]["rmse"] = rmse
+                metrics[name]["mape"] = mape
+                metrics[name]["r2"] = r2
+                # metrics[name] = r2
 
                 # plot_prediction(y_test, y_pred, inputs=inputs, info=f"(R2: {r2:.2f})")
                 # plot_true_vs_pred(y_test, y_pred)
@@ -151,7 +179,9 @@ def evaluate(model_filepath, train_filepath, test_filepath):
                 # print("MAPE: {}".format(mape))
                 print(f"{name} R2: {r2}")
 
-                metrics[name] = r2
+
+                if metrics[name][performance_metric] >= threshold_for_ensemble_models:
+                    adequate_models[name] = metrics[name][performance_metric]
 
             # # Only plot predicted sequences if the output samples are sequences.
             # if len(y_test.shape) > 1 and y_test.shape[1] > 1:
@@ -161,6 +191,11 @@ def evaluate(model_filepath, train_filepath, test_filepath):
             #     json.dump(dict(mse=mse, rmse=rmse, mape=mape, r2=r2), f)
             with open(METRICS_FILE_PATH, "w") as f:
                 json.dump(metrics, f)
+
+            ADEQUATE_MODELS_PATH.mkdir(parents=True, exist_ok=True)
+
+            with open(ADEQUATE_MODELS_PATH / "adequate_models.json", "w") as f:
+                json.dump(adequate_models, f)
 
             # save_predictions(pd.DataFrame(y_pred))
         

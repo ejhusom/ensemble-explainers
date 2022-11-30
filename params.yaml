@@ -84,7 +84,7 @@ sequentialize:
 
 train:
     seed: 2020
-    ensemble: True
+    ensemble: False
     learning_method: dt
     hyperparameter_tuning: False
 
@@ -111,6 +111,8 @@ train:
     unit_type: LSTM
 
 evaluate:
+    performance_metric: auto
+    threshold_for_ensemble_models: auto
     show_inputs: True
 
 explain: 
