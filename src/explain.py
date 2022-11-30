@@ -8,6 +8,10 @@ Author:
 Created:
     2022-11-28 mandag 16:01:00 
 
+Notes:
+
+    - https://github.com/slundberg/shap/issues/213
+
 """
 import json
 import os
@@ -19,15 +23,14 @@ import pandas as pd
 import shap
 import tensorflow as tf
 import yaml
-
 from joblib import load
 from matplotlib.colors import LinearSegmentedColormap
 from tensorflow.keras import models
+
 tf.compat.v1.disable_v2_behavior()
 
 from config import (
     ADEQUATE_MODELS_PATH,
-    DATA_PATH,
     DL_METHODS,
     INPUT_FEATURES_PATH,
     INPUT_FEATURES_SEQUENCE_PATH,
@@ -36,30 +39,27 @@ from config import (
     MODELS_PATH,
     NON_DL_METHODS,
     NON_SEQUENCE_LEARNING_METHODS,
-    OUTPUT_FEATURES_PATH,
     PLOTS_PATH,
-    PREDICTION_PLOT_PATH,
-    PREDICTIONS_FILE_PATH,
-    PREDICTIONS_PATH,
-    SEQUENCE_LEARNING_METHODS
+    SEQUENCE_LEARNING_METHODS,
 )
 
 colors = []
 
 
 for l in np.linspace(1, 0, 100):
-    colors.append((30./255, 136./255, 229./255,l))
+    colors.append((30.0 / 255, 136.0 / 255, 229.0 / 255, l))
 
 for l in np.linspace(0, 1, 100):
-    colors.append((255./255, 13./255, 87./255,l))
+    colors.append((255.0 / 255, 13.0 / 255, 87.0 / 255, l))
 
 red_transparent_blue = LinearSegmentedColormap.from_list("red_transparent_blue", colors)
 
+
 def explain(
-        model_filepath,
-        train_filepath,
-        test_filepath,
-    ):
+    model_filepath,
+    train_filepath,
+    test_filepath,
+):
     """Create explanations for predictions made by one or multiple models.
 
     model_filepath (str): Path to folder containing models.
@@ -67,7 +67,6 @@ def explain(
     test_filepath (str): Path to testing data set.
 
     """
-
 
     # Load parameters
     params = yaml.safe_load(open("params.yaml"))["explain"]
@@ -90,7 +89,7 @@ def explain(
     input_columns = pd.read_csv(INPUT_FEATURES_PATH, header=None)
 
     # Convert the input columns into a list
-    input_columns = input_columns.iloc[1:,1].to_list()
+    input_columns = input_columns.iloc[1:, 1].to_list()
 
     if ensemble:
         with open(ADEQUATE_MODELS_PATH / "adequate_models.json", "r") as f:
@@ -101,11 +100,12 @@ def explain(
         for f in os.listdir(MODELS_PATH):
             if f.startswith("model"):
                 model_names.append(f)
-            
+
         model_names = sorted(model_names)
 
+        feature_importances = []
+
         for name in model_names:
-            print(adequate_models.keys())
             if name in adequate_models.keys():
                 method = os.path.splitext(name)[0].split("_")[-1]
                 if method in DL_METHODS:
@@ -113,28 +113,43 @@ def explain(
                 else:
                     model = load(MODELS_PATH / name)
 
-                explain_predictions(
-                        model,
-                        X_train,
-                        X_test,
-                        window_size,
-                        learning_method,
-                        input_columns,
-                        number_of_background_samples,
-                        number_of_summary_samples,
+                shap_values = explain_predictions(
+                    model,
+                    X_train,
+                    X_test,
+                    window_size,
+                    learning_method,
+                    input_columns,
+                    number_of_background_samples,
+                    number_of_summary_samples,
+                    make_plots=False
                 )
 
-        return 0
+                # Source: https://github.com/slundberg/shap/issues/632
+                vals = np.abs(shap_values).mean(0)
+                feature_importance = pd.DataFrame(list(zip(input_columns, vals)),columns=['col_name',f"feature_importance_{method}"])
+                feature_importance.sort_values(by=[f"feature_importance_{method}"],ascending=False,inplace=True)
+                feature_importance = feature_importance.set_index("col_name")
+                feature_importance = feature_importance.transpose()
+                print(feature_importance)
+                feature_importances.append(feature_importance)
 
-    if learning_method in NON_DL_METHODS:
-        model = load(model_filepath)
-        y_pred = model.predict(X_test)
+        feature_importances = pd.concat(feature_importances)
+
+        # plt.figure()
+        feature_importances.plot.bar()
+        plt.tight_layout()
+        plt.savefig(PLOTS_PATH / "shap_ensemble.png")
+        plt.show()
+
     else:
-        model = models.load_model(model_filepath)
-        y_pred = model.predict(X_test)
 
+        if learning_method in NON_DL_METHODS:
+            model = load(model_filepath)
+        else:
+            model = models.load_model(model_filepath)
 
-    explain_predictions(
+        explain_predictions(
             model,
             X_train,
             X_test,
@@ -143,20 +158,22 @@ def explain(
             input_columns,
             number_of_background_samples,
             number_of_summary_samples,
-    )
+        )
 
 
 def explain_predictions(
-        model,
-        X_train,
-        X_test,
-        window_size,
-        learning_method,
-        input_columns,
-        number_of_background_samples,
-        number_of_summary_samples,
-        make_plots=True
-    ):
+    model,
+    X_train,
+    X_test,
+    window_size,
+    learning_method,
+    input_columns,
+    number_of_background_samples,
+    number_of_summary_samples,
+    make_plots=True,
+):
+
+    X_test_summary = shap.sample(X_test, number_of_summary_samples)
 
     if learning_method in NON_SEQUENCE_LEARNING_METHODS:
         if window_size > 1:
@@ -171,7 +188,6 @@ def explain_predictions(
         # Extract a summary of the training inputs, to reduce the amount of
         # compute needed to use SHAP
         X_train_background = shap.kmeans(X_train, number_of_background_samples)
-        X_test_summary = shap.sample(X_test, number_of_summary_samples)
 
         # Use a SHAP explainer on the summary of training inputs
         explainer = shap.KernelExplainer(model.predict, X_train_background)
@@ -185,28 +201,44 @@ def explain_predictions(
             single_shap_value = single_shap_value[0]
             shap_values = shap_values[0]
 
-
         if make_plots:
             # SHAP force plot: Single prediction
-            shap_force_plot_single = shap.force_plot(explainer.expected_value, single_shap_value,
-                    np.around(single_sample), show=True, feature_names=input_columns)
-            shap.save_html(str(PLOTS_PATH) + "/shap_force_plot_single.html",
-                    shap_force_plot_single)
+            shap_force_plot_single = shap.force_plot(
+                explainer.expected_value,
+                single_shap_value,
+                np.around(single_sample),
+                show=True,
+                feature_names=input_columns,
+            )
+            shap.save_html(
+                str(PLOTS_PATH) + "/shap_force_plot_single.html", shap_force_plot_single
+            )
 
             # SHAP force plot: Multiple prediction
-            shap_force_plot = shap.force_plot(explainer.expected_value, shap_values,
-                    X_test_summary, show=True, feature_names=input_columns)
+            shap_force_plot = shap.force_plot(
+                explainer.expected_value,
+                shap_values,
+                X_test_summary,
+                show=True,
+                feature_names=input_columns,
+            )
             shap.save_html(str(PLOTS_PATH) + "/shap_force_plot.html", shap_force_plot)
 
             # SHAP summary plot
-            shap.summary_plot(shap_values, X_test_summary,
-                    feature_names=input_columns, plot_size=(8,5), show=False)
-            plt.savefig(PLOTS_PATH / "shap_summary_plot.png", bbox_inches='tight', dpi=300)
+            shap.summary_plot(
+                shap_values,
+                X_test_summary,
+                feature_names=input_columns,
+                plot_size=(8, 5),
+                show=False,
+            )
+            plt.savefig(
+                PLOTS_PATH / "shap_summary_plot.png", bbox_inches="tight", dpi=300
+            )
     else:
         # Extract a summary of the training inputs, to reduce the amount of
         # compute needed to use SHAP
         X_train_background = shap.sample(X_train, number_of_background_samples)
-        X_test_summary = shap.sample(X_test, number_of_summary_samples)
 
         # Use a SHAP explainer on the summary of training inputs
         explainer = shap.DeepExplainer(model, X_train_background)
@@ -218,19 +250,35 @@ def explain_predictions(
 
         if make_plots:
             # SHAP force plot: Single prediction
-            shap_force_plot_single = shap.force_plot(explainer.expected_value, shap_values[0,:],
-                    X_test_summary[0,:], feature_names=input_columns)
-            shap.save_html(str(PLOTS_PATH) + "/shap_force_plot_single.html",
-                    shap_force_plot_single)
+            shap_force_plot_single = shap.force_plot(
+                explainer.expected_value,
+                shap_values[0, :],
+                X_test_summary[0, :],
+                feature_names=input_columns,
+            )
+            shap.save_html(
+                str(PLOTS_PATH) + "/shap_force_plot_single.html", shap_force_plot_single
+            )
 
+            # Expand dimensions with 1 in order to plot. The built-in
+            # image_plot of the shap library requires channel as one of the
+            # dimensions in the input arrays. Therefore we add one dimension to
+            # the arrays to make it seem like it is an image with one array.
             X_test_summary = np.expand_dims(X_test_summary, axis=3)
             shap_values = np.expand_dims(shap_values, axis=3)
+
             # SHAP image plot
-            # shap_image_plot = shap.image_plot(shap_values, X_test_summary,
-            # shap_image_plot = image_plot(shap_values[0,:], X_test_summary[0,:],
-            shap_image_plot = shap.image_plot(shap_values[:5,:], X_test_summary[:5,:],
-                    show=False)
-            plt.savefig(PLOTS_PATH / "shap_image_plot.png", bbox_inches='tight', dpi=300)
+            number_of_input_sequences = 5
+            shap_image_plot = shap.image_plot(
+                shap_values[:number_of_input_sequences, :],
+                X_test_summary[:number_of_input_sequences, :],
+                show=False,
+            )
+            plt.savefig(
+                PLOTS_PATH / "shap_image_plot.png", bbox_inches="tight", dpi=300
+            )
+
+    return shap_values
 
 
 if __name__ == "__main__":
@@ -238,13 +286,12 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         try:
             explain(
-                "assets/models/model.h5",
+                "assets/models/",
                 "assets/data/combined/train.npz",
-                "assets/data/combined/test.npz"
+                "assets/data/combined/test.npz",
             )
         except:
             print("Could not find model and test set.")
             sys.exit(1)
     else:
         explain(sys.argv[1], sys.argv[2], sys.argv[3])
-

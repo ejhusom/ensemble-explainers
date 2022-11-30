@@ -124,6 +124,7 @@ def train(filepath):
         monitor_metric = "loss"
 
     # Create an ensemble
+    # TODO: Make the models in the ensemble into a parameter
     if ensemble:
         # model0 = nn.dnn(
         #     n_features,
@@ -146,7 +147,6 @@ def train(filepath):
             model5 = xgb.XGBClassifier()
         else:
             model0 = SVR()
-            model1 = DecisionTreeClassifier()
             model1 = DecisionTreeRegressor()
             model2 = RandomForestRegressor()
             model3 = KNeighborsRegressor()

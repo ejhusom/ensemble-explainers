@@ -36,18 +36,16 @@ from sklearn.neighbors import KNeighborsRegressor
 from tensorflow.keras import metrics, models
 
 import neural_networks as nn
-
-import neural_networks as nn
 from config import (
     ADEQUATE_MODELS_PATH,
     DATA_PATH,
     DL_METHODS,
     INPUT_FEATURES_PATH,
     INTERVALS_PLOT_PATH,
-    MODELS_FILE_PATH,
-    MODELS_PATH,
     METHODS_IN_ENSEMBLE,
     METRICS_FILE_PATH,
+    MODELS_FILE_PATH,
+    MODELS_PATH,
     NON_DL_METHODS,
     OUTPUT_FEATURES_PATH,
     PLOTS_PATH,
@@ -55,6 +53,7 @@ from config import (
     PREDICTIONS_FILE_PATH,
     PREDICTIONS_PATH,
 )
+
 
 def evaluate(model_filepath, train_filepath, test_filepath):
     """Evaluate model to estimate power.
@@ -65,7 +64,6 @@ def evaluate(model_filepath, train_filepath, test_filepath):
         test_filepath (str): Path to test set.
 
     """
-
 
     METRICS_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -96,7 +94,6 @@ def evaluate(model_filepath, train_filepath, test_filepath):
         else:
             threshold_for_ensemble_models = 0.5
 
-
     test = np.load(test_filepath)
     X_test = test["X"]
     y_test = test["y"]
@@ -117,7 +114,7 @@ def evaluate(model_filepath, train_filepath, test_filepath):
         for f in os.listdir(MODELS_PATH):
             if f.startswith("model"):
                 model_names.append(f)
-            
+
         model_names = sorted(model_names)
 
         for name in model_names:
@@ -179,7 +176,6 @@ def evaluate(model_filepath, train_filepath, test_filepath):
                 # print("MAPE: {}".format(mape))
                 print(f"{name} R2: {r2}")
 
-
                 if metrics[name][performance_metric] >= threshold_for_ensemble_models:
                     adequate_models[name] = metrics[name][performance_metric]
 
@@ -198,11 +194,10 @@ def evaluate(model_filepath, train_filepath, test_filepath):
                 json.dump(adequate_models, f)
 
             # save_predictions(pd.DataFrame(y_pred))
-        
+
         return 0
     else:
         model_filepath = MODELS_FILE_PATH
-
 
     # pandas data frame to store predictions and ground truth.
     df_predictions = None
@@ -236,7 +231,6 @@ def evaluate(model_filepath, train_filepath, test_filepath):
         with open(METRICS_FILE_PATH, "w") as f:
             json.dump(dict(accuracy=accuracy), f)
 
-
     # Regression:
     else:
         mse = mean_squared_error(y_test, y_pred)
@@ -262,7 +256,7 @@ def evaluate(model_filepath, train_filepath, test_filepath):
     # Print feature importances of the ML algorithm supports it.
     try:
         input_columns = pd.read_csv(INPUT_FEATURES_PATH, header=None)
-        input_columns = input_columns.iloc[1:,1].to_list()
+        input_columns = input_columns.iloc[1:, 1].to_list()
         input_columns_sequence = []
 
         for c in input_columns:
@@ -282,6 +276,7 @@ def evaluate(model_filepath, train_filepath, test_filepath):
         pass
 
     save_predictions(pd.DataFrame(y_pred))
+
 
 def plot_confusion(y_test, y_pred):
     """Plotting confusion matrix of a classification model."""
@@ -486,6 +481,7 @@ def plot_sequence_predictions(y_true, y_pred):
 
     fig.write_html(str(PLOTS_PATH / "prediction_sequences.html"))
 
+
 if __name__ == "__main__":
 
     if len(sys.argv) < 3:
@@ -493,7 +489,7 @@ if __name__ == "__main__":
             evaluate(
                 "assets/models/model.h5",
                 "assets/data/combined/train.npz",
-                "assets/data/combined/test.npz"
+                "assets/data/combined/test.npz",
             )
         except:
             print("Could not find model and test set.")
