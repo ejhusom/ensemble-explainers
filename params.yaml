@@ -1,9 +1,11 @@
 profile:
-    dataset: cnc_milling_with_toolwear
+    dataset: broaching_with_tool_wear
+    # dataset: cnc_milling_with_toolwear
     # dataset: bhp_fitbit
 
 clean:
-    target: X1_ActualPosition
+    target: tool_wear
+    # target: X1_ActualPosition
     # target: fas
     classification: False
     onehot_encode_target: False
@@ -15,6 +17,12 @@ clean:
 featurize:
     # If empty, all input variables are used
     variables_to_include:
+        - acc1_x
+        - acc1_y
+        - acc1_z
+        - acc2_x
+        - acc2_y
+        - acc2_z
       # - age
       # - heart_rate_bpm_min
       # - bmi
@@ -29,7 +37,7 @@ featurize:
       # - very_active_minutes
 
     # By setting this to True, the add_-options below are overrided.
-    use_all_engineered_features_on_all_variables: False
+    use_all_engineered_features_on_all_variables: True
 
     # List the variables below each add_* to add engineered feature
     add_sum:
@@ -56,10 +64,10 @@ featurize:
         # - variable1
     add_peak_frequency:
         # - variable1
-    rolling_window_size_sum: 10
-    rolling_window_size_mean: 10
-    rolling_window_size_max_min: 10
-    rolling_window_size_standard_deviation: 10
+    rolling_window_size_sum: 128000
+    rolling_window_size_mean: 128000
+    rolling_window_size_max_min: 128000
+    rolling_window_size_standard_deviation: 128000
 
     # List features here to remove the raw variables after engineering features
     # from them
@@ -68,8 +76,8 @@ featurize:
     target_min_correlation_threshold: 0.0
 
 split:
-    train_split: 0.5
-    shuffle_files: False
+    train_split: 0.6
+    shuffle_files: True
 
 scale:
     input: minmax
@@ -79,13 +87,13 @@ sequentialize:
     window_size: 1
     overlap: 0
     target_size: 1
-    shuffle_samples: False
+    shuffle_samples: True
     future_predict: False
 
 train:
     seed: 2020
-    ensemble: True
-    learning_method: dt
+    learning_method: xgboost
+    ensemble: False
     hyperparameter_tuning: False
 
     # Parameters for deep learning (dnn, cnn, lstm etc):
@@ -113,8 +121,9 @@ train:
 evaluate:
     performance_metric: auto
     threshold_for_ensemble_models: auto
-    show_inputs: True
+    show_inputs: False
 
 explain: 
-    number_of_background_samples: 20
-    number_of_summary_samples: 20
+    number_of_background_samples: 5
+    number_of_summary_samples: 5
+    seed: 2020

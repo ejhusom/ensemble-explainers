@@ -89,7 +89,6 @@ def train(filepath):
 
     ensemble = params["ensemble"]
 
-
     output_columns = np.array(pd.read_csv(OUTPUT_FEATURES_PATH, index_col=0)).reshape(
         -1
     )
@@ -145,6 +144,7 @@ def train(filepath):
             model3 = KNeighborsClassifier()
             model4 = GradientBoostingClassifier()
             model5 = xgb.XGBClassifier()
+            model6 = SGDClassifier()
         else:
             model0 = SVR()
             model1 = DecisionTreeRegressor()
@@ -152,6 +152,7 @@ def train(filepath):
             model3 = KNeighborsRegressor()
             model4 = GradientBoostingRegressor()
             model5 = xgb.XGBRegressor()
+            model6 = SGDRegressor()
 
         models = [
                 model0,
@@ -160,8 +161,8 @@ def train(filepath):
                 model3,
                 model4,
                 model5,
+                model6,
         ]
-
 
 
         for name, model in zip(METHODS_IN_ENSEMBLE, models):

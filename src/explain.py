@@ -76,6 +76,10 @@ def explain(
     number_of_summary_samples = params["number_of_summary_samples"]
     learning_method = params_train["learning_method"]
     ensemble = params_train["ensemble"]
+    seed = params["seed"]
+    
+    if seed is None:
+        seed = np.random.randint(0)
 
     # Load training data
     train = np.load(train_filepath)
@@ -122,25 +126,24 @@ def explain(
                     input_columns,
                     number_of_background_samples,
                     number_of_summary_samples,
-                    make_plots=False
+                    make_plots=False,
+                    seed=2020,
                 )
 
-                # Source: https://github.com/slundberg/shap/issues/632
-                vals = np.abs(shap_values).mean(0)
-                feature_importance = pd.DataFrame(list(zip(input_columns, vals)),columns=['col_name',f"feature_importance_{method}"])
-                feature_importance.sort_values(by=[f"feature_importance_{method}"],ascending=False,inplace=True)
-                feature_importance = feature_importance.set_index("col_name")
+                feature_importance = get_feature_importance(shap_values,
+                        input_columns, label=method)
                 feature_importance = feature_importance.transpose()
                 print(feature_importance)
                 feature_importances.append(feature_importance)
 
         feature_importances = pd.concat(feature_importances)
 
-        # plt.figure()
-        feature_importances.plot.bar()
-        plt.tight_layout()
-        plt.savefig(PLOTS_PATH / "shap_ensemble.png")
-        plt.show()
+        # Scale feature importances to range of [0, 1]
+        feature_importances = feature_importances.div(feature_importances.sum(axis=1), axis=0)
+
+        pd.options.plotting.backend = "plotly"
+        fig = feature_importances.plot.bar()
+        fig.show()
 
     else:
 
@@ -161,6 +164,16 @@ def explain(
         )
 
 
+def get_feature_importance(shap_values, column_names, label=""):
+    # Source: https://github.com/slundberg/shap/issues/632
+
+    vals = np.abs(shap_values).mean(0)
+    feature_importance = pd.DataFrame(list(zip(column_names, vals)),columns=['col_name',f"feature_importance_{label}"])
+    feature_importance.sort_values(by=[f"feature_importance_{label}"], ascending=False, inplace=True)
+    feature_importance = feature_importance.set_index("col_name")
+
+    return feature_importance
+
 def explain_predictions(
     model,
     X_train,
@@ -171,9 +184,11 @@ def explain_predictions(
     number_of_background_samples,
     number_of_summary_samples,
     make_plots=True,
+    seed=2022,
 ):
 
-    X_test_summary = shap.sample(X_test, number_of_summary_samples)
+    X_test_summary = shap.sample(X_test, number_of_summary_samples,
+            random_state=seed)
 
     if learning_method in NON_SEQUENCE_LEARNING_METHODS:
         if window_size > 1:
@@ -238,7 +253,8 @@ def explain_predictions(
     else:
         # Extract a summary of the training inputs, to reduce the amount of
         # compute needed to use SHAP
-        X_train_background = shap.sample(X_train, number_of_background_samples)
+        X_train_background = shap.sample(X_train, number_of_background_samples,
+                random_state=seed)
 
         # Use a SHAP explainer on the summary of training inputs
         explainer = shap.DeepExplainer(model, X_train_background)

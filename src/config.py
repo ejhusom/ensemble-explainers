@@ -73,7 +73,8 @@ METHODS_IN_ENSEMBLE = [
     "rf",
     "kn",
     "gb",
-    "xgb"
+    "xgb",
+    "sgd",
 ]
 
 
