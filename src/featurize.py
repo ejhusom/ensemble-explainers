@@ -121,9 +121,10 @@ def _featurize(df, features, remove_features, params, output_columns):
             del df[col]
 
         # Remove feature if it is non-numeric
-        elif not is_numeric_dtype(df[col]):
-            print(f"Removing feature {col} because it is non-numeric.")
-            del df[col]
+        # FIXME: This sometimes removes features that actually are numeric.
+        # elif not is_numeric_dtype(df[col]):
+        #     print(f"Removing feature {col} because it is non-numeric.")
+        #     del df[col]
 
         # Convert boolean feature to integer
         elif df.dtypes[col] == bool:

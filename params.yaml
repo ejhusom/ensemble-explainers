@@ -1,10 +1,12 @@
 profile:
-    dataset: broaching_with_tool_wear
+    dataset: piston_rod
+    # dataset: broaching_with_tool_wear
     # dataset: cnc_milling_with_toolwear
     # dataset: bhp_fitbit
 
 clean:
-    target: tool_wear
+    target: time_until_tool_change
+    # target: tool_wear
     # target: X1_ActualPosition
     # target: fas
     classification: False
@@ -17,12 +19,12 @@ clean:
 featurize:
     # If empty, all input variables are used
     variables_to_include:
-        - acc1_x
-        - acc1_y
-        - acc1_z
-        - acc2_x
-        - acc2_y
-        - acc2_z
+        # - acc1_x
+        # - acc1_y
+        # - acc1_z
+        # - acc2_x
+        # - acc2_y
+        # - acc2_z
       # - age
       # - heart_rate_bpm_min
       # - bmi
@@ -37,7 +39,7 @@ featurize:
       # - very_active_minutes
 
     # By setting this to True, the add_-options below are overrided.
-    use_all_engineered_features_on_all_variables: True
+    use_all_engineered_features_on_all_variables: False
 
     # List the variables below each add_* to add engineered feature
     add_sum:
@@ -72,6 +74,8 @@ featurize:
     # List features here to remove the raw variables after engineering features
     # from them
     remove_features:
+        - timestamp
+        - TimeSinceStartup
         # - variable1
     target_min_correlation_threshold: 0.0
 
