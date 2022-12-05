@@ -26,10 +26,14 @@ from plotly.subplots import make_subplots
 from sklearn.base import RegressorMixin
 from sklearn.metrics import (
     accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
     confusion_matrix,
     explained_variance_score,
     mean_absolute_percentage_error,
     mean_squared_error,
+    precision_score,
     r2_score,
 )
 from sklearn.neighbors import KNeighborsRegressor
@@ -138,7 +142,14 @@ def evaluate(model_filepath, train_filepath, test_filepath):
 
             for name, y_pred in zip(model_names, y_preds):
                 accuracy = accuracy_score(y_test, y_pred)
-                print(f"{name}: {accuracy}")
+                precision = precision_score(y_test, y_pred)
+                recall = recall_score(y_test, y_pred)
+                f1 = f1_score(y_test, y_pred)
+
+                print(f"{name} precision: {precision}")
+                print(f"{name} recall: {recall}")
+                print(f"{name} F1: {f1}")
+                print(f"{name} accuracy: {accuracy}")
                 metrics[name] = accuracy
 
                 if accuracy >= threshold_for_ensemble_models:
