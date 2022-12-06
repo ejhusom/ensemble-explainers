@@ -19,6 +19,94 @@ clean:
 featurize:
     # If empty, all input variables are used
     variables_to_include:
+        - NCLine
+        # - ProgramName
+        - ProgramStatus
+        - SpindleRPM
+        - aaCurr1
+        - aaCurr13
+        - aaCurr14
+        - aaCurr16
+        - aaCurr2
+        - aaCurr3
+        - aaCurr4
+        - aaCurr5
+        - aaCurr6
+        - aaCurr7
+        - aaCurr8
+        - aaCurr9
+        - aaLoad1
+        - aaLoad13
+        - aaLoad14
+        - aaLoad16
+        - aaLoad2
+        - aaLoad3
+        - aaLoad4
+        - aaLoad5
+        - aaLoad6
+        - aaLoad7
+        - aaLoad8
+        - aaLoad9
+        - aaPower1
+        - aaPower13
+        - aaPower14
+        - aaPower16
+        - aaPower2
+        # - aaPower20
+        - aaPower3
+        - aaPower4
+        - aaPower5
+        - aaPower6
+        - aaPower7
+        - aaPower8
+        - aaPower9
+        - aaTorque1
+        - aaTorque13
+        - aaTorque14
+        - aaTorque16
+        - aaTorque2
+        - aaTorque3
+        - aaTorque4
+        - aaTorque5
+        - aaTorque6
+        - aaTorque7
+        - aaTorque8
+        - aaTorque9
+        - actFeedRate1
+        - actFeedRate13
+        - actFeedRate14
+        - actFeedRate16
+        - actFeedRate2
+        - actFeedRate3
+        - actFeedRate5
+        - actFeedRate6
+        - actFeedRate7
+        - actFeedRate8
+        - actFeedRate9
+        - actSpeed1
+        - actSpeed2
+        - actSpeed3
+        - actToolBasePos1
+        - actToolBasePos3
+        - measPos11
+        - measPos113
+        - measPos114
+        - measPos116
+        - measPos12
+        - measPos13
+        - measPos15
+        - measPos16
+        - measPos17
+        - measPos18
+        - measPos19
+        - measPos213
+        - measPos214
+        - measPos216
+        - measPos22
+        - measPos23
+        - measPos25
+        - measPos28
+        - measPos29
         # - NCLine
         # - measPos116
         # - measPos113
@@ -72,10 +160,10 @@ featurize:
         # - variable1
     add_peak_frequency:
         # - variable1
-    rolling_window_size_sum: 50
-    rolling_window_size_mean: 50
-    rolling_window_size_max_min: 50
-    rolling_window_size_standard_deviation: 50
+    rolling_window_size_sum: 100
+    rolling_window_size_mean: 100
+    rolling_window_size_max_min: 100
+    rolling_window_size_standard_deviation: 100
 
     # List features here to remove the raw variables after engineering features
     # from them
@@ -87,8 +175,9 @@ featurize:
     target_min_correlation_threshold: 0.0
 
 split:
-    train_split: 0.6
+    train_split: 0.7
     shuffle_files: True
+    shuffle_samples_before_split: False
 
 scale:
     input: minmax
@@ -115,7 +204,7 @@ train:
     batch_size: 256
     # n_layers: 5
     # n_neurons: [256,128,128,64,64]
-    n_layers: 2
+    n_layers: 4
     n_neurons: 32
     dropout: 0.1
 

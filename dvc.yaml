@@ -76,6 +76,7 @@ stages:
         params:
         - split.train_split
         - split.shuffle_files
+        - split.shuffle_samples_before_split
 
     scale:
         cmd: python3 src/scale.py assets/data/split/
