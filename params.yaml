@@ -555,7 +555,7 @@ sequentialize:
 
 train:
     seed: 2020
-    learning_method: xgboost
+    learning_method: rf
     ensemble: False
     hyperparameter_tuning: False
 
