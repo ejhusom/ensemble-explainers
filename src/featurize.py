@@ -93,7 +93,7 @@ def featurize(dir_path="", inference=False, inference_df=None):
         np.save(
             DATA_FEATURIZED_PATH
             / os.path.basename(filepath).replace("cleaned.csv", "featurized.npy"),
-            df.to_numpy(),
+            df.to_numpy(), allow_pickle=True
         )
 
     # Save list of features used

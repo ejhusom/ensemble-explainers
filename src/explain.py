@@ -143,7 +143,9 @@ def explain(
 
         pd.options.plotting.backend = "plotly"
         fig = feature_importances.plot.bar()
+        fig.write_html(str(PLOTS_PATH / "feature_importances.html"))
         fig.show()
+
 
     else:
 
