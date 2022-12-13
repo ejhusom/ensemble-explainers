@@ -46,6 +46,7 @@ from sklearn.linear_model import (
 )
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, roc_auc_score
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -144,7 +145,7 @@ def train(filepath):
             model3 = KNeighborsClassifier()
             model4 = GradientBoostingClassifier()
             model5 = xgb.XGBClassifier()
-            model6 = SGDClassifier()
+            # model6 = SGDClassifier()
         else:
             model0 = SVR()
             model1 = DecisionTreeRegressor()
@@ -152,7 +153,7 @@ def train(filepath):
             model3 = KNeighborsRegressor()
             model4 = GradientBoostingRegressor()
             model5 = xgb.XGBRegressor()
-            model6 = SGDRegressor()
+            # model6 = SGDRegressor()
 
         models = [
                 model0,
@@ -161,7 +162,7 @@ def train(filepath):
                 model3,
                 model4,
                 model5,
-                model6,
+                # model6,
         ]
 
 
@@ -319,7 +320,10 @@ def train(filepath):
         if classification:
             model = xgb.XGBClassifier()
         else:
-            model = xgb.XGBRegressor()
+            if target_size > 1:
+                model = MultiOutputRegressor(xgb.XGBRegressor())
+            else:
+                model = xgb.XGBRegressor()
         if params["hyperparameter_tuning"]:
             model = RandomizedSearchCV(
                 model,

@@ -24,6 +24,7 @@ NON_DL_METHODS = [
     "rf",
     "explainableboosting",
     "xgboost",
+    "xgb",
     "lda",
     "qda",
     "svm",
@@ -36,6 +37,7 @@ NON_DL_METHODS = [
     "elasticnet",
     "sgd",
     "kneighbors",
+    "kn",
     "gb",
     "gradientboosting",
 ]
@@ -49,6 +51,7 @@ NON_SEQUENCE_LEARNING_METHODS = [
     "dt",
     "rf",
     "xgboost",
+    "xgb",
     "explainableboosting",
     "lda",
     "qda",
@@ -62,6 +65,7 @@ NON_SEQUENCE_LEARNING_METHODS = [
     "elasticnet",
     "sgd",
     "kneighbors",
+    "kn",
     "gb",
     "gradientboosting",
 ]

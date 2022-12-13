@@ -32,6 +32,7 @@ tf.compat.v1.disable_v2_behavior()
 from config import (
     ADEQUATE_MODELS_PATH,
     DL_METHODS,
+    FEATURES_PATH,
     INPUT_FEATURES_PATH,
     INPUT_FEATURES_SEQUENCE_PATH,
     INTERVALS_PLOT_PATH,
@@ -100,6 +101,7 @@ def explain(
             adequate_models = json.load(f)
 
         model_names = []
+        adequate_methods = []
 
         for f in os.listdir(MODELS_PATH):
             if f.startswith("model"):
@@ -109,9 +111,16 @@ def explain(
 
         feature_importances = []
 
+        # Variables for saving n most important features for all models
+        n = 10
+        # importance_table_rows = []
+        sorted_feature_importances = {}
+
+
         for name in model_names:
             if name in adequate_models.keys():
                 method = os.path.splitext(name)[0].split("_")[-1]
+                adequate_methods.append(method)
                 if method in DL_METHODS:
                     model = models.load_model(MODELS_PATH / name)
                 else:
@@ -122,7 +131,7 @@ def explain(
                     X_train,
                     X_test,
                     window_size,
-                    learning_method,
+                    method,
                     input_columns,
                     number_of_background_samples,
                     number_of_summary_samples,
@@ -132,8 +141,19 @@ def explain(
 
                 feature_importance = get_feature_importance(shap_values,
                         input_columns, label=method)
+
+                # Save the ten most important features
+                sorted_feature_importance = feature_importance.sort_values(
+                        by=f"feature_importance_{method}", 
+                        ascending=False
+                )
+                sorted_feature_importance.to_csv(FEATURES_PATH /
+                        f"sorted_feature_importance_{method}.csv")
+
+                sorted_feature_importances[method] = sorted_feature_importance
+
+
                 feature_importance = feature_importance.transpose()
-                print(feature_importance)
                 feature_importances.append(feature_importance)
 
         feature_importances = pd.concat(feature_importances)
@@ -141,11 +161,52 @@ def explain(
         # Scale feature importances to range of [0, 1]
         feature_importances = feature_importances.div(feature_importances.sum(axis=1), axis=0)
 
+        feature_importances.to_csv(FEATURES_PATH / "feature_importances.csv")
+
         pd.options.plotting.backend = "plotly"
         fig = feature_importances.plot.bar()
         fig.write_html(str(PLOTS_PATH / "feature_importances.html"))
         fig.show()
 
+
+        adequate_methods = sorted(adequate_methods)
+
+        n_tables = 2
+        n_methods_per_table = len(adequate_methods) // n_tables
+        overflow_methods = len(adequate_methods) % n_tables
+        
+        for t in range(n_tables):
+            first_method = t * n_methods_per_table
+
+            if overflow_methods > 0 and t == n_tables - 1:
+                last_method = (t+1) * n_methods_per_table + overflow_methods
+            else:
+                last_method = (t+1) * n_methods_per_table
+
+            header_row = ""
+
+            # Create header row for importance_table.
+            for method in adequate_methods[first_method:last_method]:
+                header_row += f" & {method} " + r"Feature & $\bar{S}$ "
+
+            rows = [header_row]
+
+            for i in range(n):
+                row = f"{i+1} "
+                for method in adequate_methods[first_method:last_method]:
+                    df = sorted_feature_importances[method]
+
+                    feature = df.index[i].replace("_", r"\_")
+                    value = df[f"feature_importance_{method}"][i]
+                    row += r" & \texttt{" + feature + "}" + f" & {round(value, 3)} "
+
+                rows.append(row)
+
+            
+            importance_table = "\\\\ \n".join(rows) + "\\\\"
+
+            with open(FEATURES_PATH / f"importance_table_{t}.tex", "w") as f:
+                f.write(importance_table)
 
     else:
 
@@ -204,7 +265,8 @@ def explain_predictions(
 
         # Extract a summary of the training inputs, to reduce the amount of
         # compute needed to use SHAP
-        X_train_background = shap.kmeans(X_train, number_of_background_samples)
+        k = np.min([X_train.shape[0], 50])
+        X_train_background = shap.kmeans(X_train, k)
 
         # Use a SHAP explainer on the summary of training inputs
         explainer = shap.KernelExplainer(model.predict, X_train_background)
@@ -313,3 +375,4 @@ if __name__ == "__main__":
             sys.exit(1)
     else:
         explain(sys.argv[1], sys.argv[2], sys.argv[3])
+
