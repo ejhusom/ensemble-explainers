@@ -25,6 +25,7 @@ NON_DL_METHODS = [
     "explainableboosting",
     "xgboost",
     "xgb",
+    "lgbm",
     "lda",
     "qda",
     "svm",
@@ -52,6 +53,7 @@ NON_SEQUENCE_LEARNING_METHODS = [
     "rf",
     "xgboost",
     "xgb",
+    "lgbm",
     "explainableboosting",
     "lda",
     "qda",
@@ -71,14 +73,15 @@ NON_SEQUENCE_LEARNING_METHODS = [
 ]
 
 METHODS_IN_ENSEMBLE = [
-    # "dnn",
-    "svm",
     "dt",
     "rf",
-    "kn",
     "gb",
     "xgb",
     "sgd",
+    "lgbm",
+    # "dnn",
+    # "svm",
+    # "kn",
 ]
 
 

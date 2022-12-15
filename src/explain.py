@@ -116,7 +116,6 @@ def explain(
         # importance_table_rows = []
         sorted_feature_importances = {}
 
-
         for name in model_names:
             if name in adequate_models.keys():
                 method = os.path.splitext(name)[0].split("_")[-1]
@@ -126,6 +125,7 @@ def explain(
                 else:
                     model = load(MODELS_PATH / name)
 
+                print(f"Explaining {method}")
                 shap_values = explain_predictions(
                     model,
                     X_train,

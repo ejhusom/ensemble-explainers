@@ -20,6 +20,7 @@ import pandas as pd
 import xgboost as xgb
 import yaml
 from joblib import dump
+from lightgbm import LGBMClassifier, LGBMRegressor
 from keras_tuner import HyperParameters
 from keras_tuner.tuners import BayesianOptimization, Hyperband, RandomSearch
 from sklearn.discriminant_analysis import (
@@ -139,21 +140,23 @@ def train(filepath):
         #     seed=params["seed"]
         # )
         if classification:
-            model0 = SVC()
-            model1 = DecisionTreeClassifier()
-            model2 = RandomForestClassifier()
-            model3 = KNeighborsClassifier()
-            model4 = GradientBoostingClassifier()
-            model5 = xgb.XGBClassifier()
-            # model6 = SGDClassifier()
+            model0 = DecisionTreeClassifier()
+            model1 = RandomForestClassifier()
+            model2 = GradientBoostingClassifier()
+            model3 = xgb.XGBClassifier()
+            model4 = SGDClassifier()
+            model5 = LGBMClassifier()
+            # model0 = SVC()
+            # model3 = KNeighborsClassifier()
         else:
-            model0 = SVR()
-            model1 = DecisionTreeRegressor()
-            model2 = RandomForestRegressor()
-            model3 = KNeighborsRegressor()
-            model4 = GradientBoostingRegressor()
-            model5 = xgb.XGBRegressor()
-            # model6 = SGDRegressor()
+            model0 = DecisionTreeRegressor()
+            model1 = RandomForestRegressor()
+            model2 = GradientBoostingRegressor()
+            model3 = xgb.XGBRegressor()
+            model4 = SGDRegressor()
+            model5 = LGBMRegressor()
+            # model0 = SVR()
+            # model3 = KNeighborsRegressor()
 
         models = [
                 model0,
@@ -560,6 +563,6 @@ def plot_neural_network_architecture(model):
 
 if __name__ == "__main__":
 
-    np.random.seed(2021)
+    np.random.seed(2022)
 
     train(sys.argv[1])
