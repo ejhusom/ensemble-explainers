@@ -142,6 +142,9 @@ def explain(
                 feature_importance = get_feature_importance(shap_values,
                         input_columns, label=method)
 
+                # Scale feature importances to range of [0, 1]
+                feature_importance = feature_importance.div(feature_importance.sum(axis=0), axis=1)
+
                 # Save the ten most important features
                 sorted_feature_importance = feature_importance.sort_values(
                         by=f"feature_importance_{method}", 
@@ -157,9 +160,6 @@ def explain(
                 feature_importances.append(feature_importance)
 
         feature_importances = pd.concat(feature_importances)
-
-        # Scale feature importances to range of [0, 1]
-        feature_importances = feature_importances.div(feature_importances.sum(axis=1), axis=0)
 
         feature_importances.to_csv(FEATURES_PATH / "feature_importances.csv")
 
