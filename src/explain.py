@@ -310,10 +310,15 @@ def explain_predictions(
                 feature_names=input_columns,
                 plot_size=(8, 5),
                 show=False,
+                max_display=10,
             )
+            plt.xticks(rotation = 45)
+            plt.tight_layout()
+
             plt.savefig(
                 PLOTS_PATH / "shap_summary_plot.png", bbox_inches="tight", dpi=300
             )
+            # plt.show()
     else:
         # Extract a summary of the training inputs, to reduce the amount of
         # compute needed to use SHAP
