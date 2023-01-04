@@ -52,7 +52,11 @@ if __name__ == '__main__':
     feature_importances = pd.read_csv(FEATURES_PATH /
             "feature_importances.csv", index_col=0)
 
-    inadequate_models = ["lgbm", "sgd"]
+    # Piston rod:
+    inadequate_models = ["dt", "gb", "sgd"]
+
+    # Broaching:
+    # inadequate_models = ["lgbm", "sgd"]
 
     # Delete rows of the models in inadequate_models
     for index, row in feature_importances.iterrows():
