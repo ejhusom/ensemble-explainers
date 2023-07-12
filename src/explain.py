@@ -17,6 +17,7 @@ import json
 import os
 import sys
 
+import lime
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -24,6 +25,7 @@ import shap
 import tensorflow as tf
 import yaml
 from joblib import load
+from lime import submodular_pick
 from matplotlib.colors import LinearSegmentedColormap
 from tensorflow.keras import models
 
@@ -75,9 +77,11 @@ def explain(
     window_size = yaml.safe_load(open("params.yaml"))["sequentialize"]["window_size"]
     number_of_background_samples = params["number_of_background_samples"]
     number_of_summary_samples = params["number_of_summary_samples"]
+    explanation_method = params["explanation_method"]
     learning_method = params_train["learning_method"]
     ensemble = params_train["ensemble"]
     seed = params["seed"]
+    classification = yaml.safe_load(open("params.yaml"))["clean"]["classification"]
     
     if seed is None:
         seed = np.random.randint(0)
@@ -137,6 +141,8 @@ def explain(
                     number_of_summary_samples,
                     make_plots=False,
                     seed=2020,
+                    classification=classification,
+                    explanation_method=explanation_method,
                 )
 
                 feature_importance = get_feature_importance(shap_values,
@@ -224,6 +230,8 @@ def explain(
             input_columns,
             number_of_background_samples,
             number_of_summary_samples,
+            classification=classification,
+            explanation_method=explanation_method,
         )
 
 
@@ -238,6 +246,53 @@ def get_feature_importance(shap_values, column_names, label=""):
     return feature_importance
 
 def explain_predictions(
+    model,
+    X_train,
+    X_test,
+    window_size,
+    learning_method,
+    input_columns,
+    number_of_background_samples,
+    number_of_summary_samples,
+    make_plots=True,
+    seed=2022,
+    explanation_method="shap",
+    classification=False,
+):
+
+    if explanation_method == "shap":
+        xai_values = explain_predictions_shap(
+            model,
+            X_train,
+            X_test,
+            window_size,
+            learning_method,
+            input_columns,
+            number_of_background_samples,
+            number_of_summary_samples,
+            make_plots=False,
+            seed=2020,
+        )
+    elif explanation_method == "lime":
+        xai_values = explain_predictions_lime(
+            model,
+            X_train,
+            X_test,
+            window_size,
+            learning_method,
+            input_columns,
+            number_of_background_samples,
+            number_of_summary_samples,
+            make_plots=False,
+            seed=2020,
+            classification=classification,
+        )
+    else:
+        raise NotImplementedError(f"Explanation method {explanation_method} is not implemented.")
+
+    return xai_values
+
+def explain_predictions_shap(
     model,
     X_train,
     X_test,
@@ -269,10 +324,14 @@ def explain_predictions(
         X_train_background = shap.kmeans(X_train, k)
 
         # Use a SHAP explainer on the summary of training inputs
-        explainer = shap.KernelExplainer(model.predict, X_train_background)
+        # explainer = shap.KernelExplainer(model.predict, X_train_background)
+        print(learning_method)
+        explainer = shap.TreeExplainer(model, X_train_background)
 
+        print("1 ============")
         # Single prediction explanation
         single_sample = X_test[0]
+        print(single_sample.shape)
         single_shap_value = explainer.shap_values(single_sample)
         shap_values = explainer.shap_values(X_test_summary)
 
@@ -365,6 +424,58 @@ def explain_predictions(
 
     return shap_values
 
+def explain_predictions_lime(
+    model,
+    X_train,
+    X_test,
+    window_size,
+    learning_method,
+    input_columns,
+    number_of_background_samples,
+    number_of_summary_samples,
+    make_plots=True,
+    seed=2022,
+    classification=False,
+):
+
+    if classification:
+        mode = "classification"
+    else:
+        mode = "regression"
+
+    if window_size == 1:
+        lime_explainer = lime.lime_tabular.LimeTabularExplainer(
+                X_train,
+                feature_names=input_columns,
+                mode=mode,
+                discretize_continuous=False,
+        )
+    else:
+        lime_explainer = lime.lime_tabular.LimeRecurrentTabularExplainer(
+                X_train,
+                feature_names=input_columns,
+                mode=mode,
+                discretize_continuous=False,
+        )
+
+    sp_obj = lime.submodular_pick.SubmodularPick(lime_explainer, X_train,
+        model.predict, sample_size=number_of_background_samples)
+
+    #Making a dataframe of all the explanations of sampled points
+    xai_values = pd.DataFrame([dict(this.as_list()) for this in sp_obj.explanations]).fillna(0)
+
+    if make_plots:
+        ##Plotting the aggregate importances
+        avg_xai_values = np.abs(xai_values).mean(axis=0).sort_values(ascending=False).head(
+            25
+        ).sort_values(ascending=True).plot(kind="barh")
+        # plt.show()
+
+        plt.savefig(
+            PLOTS_PATH / "lime_summary_plot.png", bbox_inches="tight", dpi=300
+        )
+
+    return xai_values
 
 if __name__ == "__main__":
 

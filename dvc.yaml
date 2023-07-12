@@ -188,3 +188,4 @@ stages:
         - explain.number_of_background_samples
         - explain.number_of_summary_samples
         - explain.seed
+        - explain.explanation_method
