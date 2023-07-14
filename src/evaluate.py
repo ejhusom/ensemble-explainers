@@ -136,8 +136,6 @@ def evaluate(model_filepath, train_filepath, test_filepath):
 
         if classification:
 
-            # info += "Accuracies: "
-
             if onehot_encode_target:
                 y_test = np.argmax(y_test, axis=-1)
 
@@ -160,7 +158,6 @@ def evaluate(model_filepath, train_filepath, test_filepath):
                 if accuracy >= threshold_for_ensemble_models:
                     adequate_models[name] = accuracy
 
-                # info += f"{name} {accuracy:.2f}. "
                 y_preds[method + f" ({accuracy:.2f})"] = y_preds.pop(method)
 
             # plot_prediction(y_test, y_pred, info="Accuracy: {})".format(accuracy))
@@ -172,10 +169,7 @@ def evaluate(model_filepath, train_filepath, test_filepath):
         # Regression:
         else:
             metrics = {}
-            # info += "R2-scores: "
 
-
-            # for name, method in zip(model_names, y_preds):
             for name in model_names:
                 method = os.path.splitext(name)[0].split("_")[-1]
                 print(f"{name}, {method}")
