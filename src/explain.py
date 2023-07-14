@@ -165,6 +165,7 @@ def explain(
                 feature_importance = feature_importance.transpose()
                 feature_importances.append(feature_importance)
 
+        print(feature_importances)
         feature_importances = pd.concat(feature_importances)
 
         feature_importances.to_csv(FEATURES_PATH / "feature_importances.csv")
@@ -234,6 +235,16 @@ def explain(
             explanation_method=explanation_method,
         )
 
+    print(adequate_methods)
+    print("=======")
+    print(adequate_models)
+
+    # Delete rows of the models in inadequate_models
+    for index, row in feature_importances.iterrows():
+        if index.split("_")[-1] not in adequate_methods:
+            feature_importances.drop(index, inplace=True)
+
+    combine_explanations(feature_importances)
 
 def get_feature_importance(shap_values, column_names, label=""):
     # Source: https://github.com/slundberg/shap/issues/632
@@ -324,9 +335,9 @@ def explain_predictions_shap(
         X_train_background = shap.kmeans(X_train, k)
 
         # Use a SHAP explainer on the summary of training inputs
-        # explainer = shap.KernelExplainer(model.predict, X_train_background)
+        explainer = shap.KernelExplainer(model.predict, X_train_background)
         print(learning_method)
-        explainer = shap.TreeExplainer(model, X_train_background)
+        # explainer = shap.TreeExplainer(model, X_train_background)
 
         print("1 ============")
         # Single prediction explanation
@@ -476,6 +487,45 @@ def explain_predictions_lime(
         )
 
     return xai_values
+
+def combine_explanations(
+        feature_importances,
+        method="avg"
+    ):
+    """Combine explanations from ensemble.
+
+    Args:
+        feature_importances: DatFrame containing the feature importances for
+            all models in ensemble. Rows: Models. Columns: Features.
+
+    """
+
+    feature_importances.fillna(0, inplace=True) 
+
+    if method == "avg":
+        combined_feature_importances = feature_importances.mean(0,
+                numeric_only=True)
+    else:
+        print(" -- Using default combination method: average")
+        combined_feature_importances = feature_importances.mean(0,
+                numeric_only=True)
+
+    # Save the ten most important features
+    sorted_combined_feature_importances = combined_feature_importances.sort_values(
+            ascending=False
+    )
+    sorted_combined_feature_importances.to_csv(FEATURES_PATH /
+            "sorted_combined_feature_importances.csv")
+
+    print(sorted_combined_feature_importances)
+
+    return sorted_combined_feature_importances
+
+def generate_explanation_report():
+
+    pass
+
+
 
 if __name__ == "__main__":
 

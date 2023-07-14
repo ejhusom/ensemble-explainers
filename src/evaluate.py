@@ -112,8 +112,9 @@ def evaluate(model_filepath, train_filepath, test_filepath):
 
     if ensemble:
         model_names = []
-        y_preds = []
+        y_preds = {}
         metrics = []
+        # info = ". "
 
         for f in os.listdir(MODELS_PATH):
             if f.startswith("model"):
@@ -129,18 +130,22 @@ def evaluate(model_filepath, train_filepath, test_filepath):
                 model = load(MODELS_PATH / name)
 
             y_pred = model.predict(X_test)
-            y_preds.append(y_pred)
+            y_preds[method] = y_pred
 
         adequate_models = {}
 
         if classification:
+
+            # info += "Accuracies: "
 
             if onehot_encode_target:
                 y_test = np.argmax(y_test, axis=-1)
 
             metrics = {}
 
-            for name, y_pred in zip(model_names, y_preds):
+            for name in model_names:
+                method = os.path.splitext(name)[0].split("_")[-1]
+                y_pred = y_preds[method]
                 accuracy = accuracy_score(y_test, y_pred)
                 precision = precision_score(y_test, y_pred)
                 recall = recall_score(y_test, y_pred)
@@ -155,6 +160,9 @@ def evaluate(model_filepath, train_filepath, test_filepath):
                 if accuracy >= threshold_for_ensemble_models:
                     adequate_models[name] = accuracy
 
+                # info += f"{name} {accuracy:.2f}. "
+                y_preds[method + f" ({accuracy:.2f})"] = y_preds.pop(method)
+
             # plot_prediction(y_test, y_pred, info="Accuracy: {})".format(accuracy))
             # plot_confusion(y_test, y_pred)
 
@@ -164,8 +172,14 @@ def evaluate(model_filepath, train_filepath, test_filepath):
         # Regression:
         else:
             metrics = {}
+            # info += "R2-scores: "
 
-            for name, y_pred in zip(model_names, y_preds):
+
+            # for name, method in zip(model_names, y_preds):
+            for name in model_names:
+                method = os.path.splitext(name)[0].split("_")[-1]
+                print(f"{name}, {method}")
+                y_pred = y_preds[method]
                 metrics[name] = {}
 
                 mse = mean_squared_error(y_test, y_pred)
@@ -185,10 +199,18 @@ def evaluate(model_filepath, train_filepath, test_filepath):
                 # print("MSE: {}".format(mse))
                 # print("RMSE: {}".format(rmse))
                 # print("MAPE: {}".format(mape))
-                print(f"{name} R2: {r2}")
+                # print(f"{name} R2: {r2:.3f}")
+
+                # info += f"{name} {r2:.2f}. "
+                y_preds[method + f" ({r2:.2f})"] = y_preds.pop(method)
+
+                for n in y_preds:
+                    print(n)
+                print("======")
 
                 if metrics[name][performance_metric] >= threshold_for_ensemble_models:
                     adequate_models[name] = metrics[name][performance_metric]
+
 
             # # Only plot predicted sequences if the output samples are sequences.
             # if len(y_test.shape) > 1 and y_test.shape[1] > 1:
@@ -205,6 +227,8 @@ def evaluate(model_filepath, train_filepath, test_filepath):
                 json.dump(adequate_models, f)
 
             # save_predictions(pd.DataFrame(y_pred))
+
+        plot_prediction(y_test, y_preds, inputs=inputs, info="ensemble")
 
         return 0
     else:
@@ -393,6 +417,11 @@ def plot_prediction(y_true, y_pred, inputs=None, info=""):
 
     """
 
+    if isinstance(y_pred, dict):
+        ensemble = True
+    else:
+        ensemble = False
+
     PREDICTION_PLOT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     x = np.linspace(0, y_true.shape[0] - 1, y_true.shape[0])
@@ -400,18 +429,31 @@ def plot_prediction(y_true, y_pred, inputs=None, info=""):
 
     if len(y_true.shape) > 1:
         y_true = y_true[:, -1].reshape(-1)
-    if len(y_pred.shape) > 1:
-        y_pred = y_pred[:, -1].reshape(-1)
+
+    if ensemble:
+        for arr in y_pred:
+            if len(y_pred[arr].shape) > 1:
+                y_pred[arr] = y_pred[arr][:, -1].reshape(-1)
+    else:
+        if len(y_pred.shape) > 1:
+            y_pred = y_pred[:, -1].reshape(-1)
 
     fig.add_trace(
         go.Scatter(x=x, y=y_true, name="true"),
         secondary_y=False,
     )
 
-    fig.add_trace(
-        go.Scatter(x=x, y=y_pred, name="pred"),
-        secondary_y=False,
-    )
+    if ensemble:
+        for arr in y_pred:
+            fig.add_trace(
+                go.Scatter(x=x, y=y_pred[arr], name=arr),
+                secondary_y=False,
+            )
+    else:
+        fig.add_trace(
+            go.Scatter(x=x, y=y_pred, name="pred"),
+            secondary_y=False,
+        )
 
     if inputs is not None:
         input_columns = pd.read_csv(INPUT_FEATURES_PATH, index_col=0)
@@ -491,7 +533,6 @@ def plot_sequence_predictions(y_true, y_pred):
     PREDICTION_PLOT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     fig.write_html(str(PLOTS_PATH / "prediction_sequences.html"))
-
 
 if __name__ == "__main__":
 
