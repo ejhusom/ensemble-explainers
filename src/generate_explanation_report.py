@@ -20,6 +20,9 @@ def generate_explanation_report():
 
     with open(PLOTS_PATH / "feature_importances.html", "r") as infile:
         feature_importances_plot = infile.read()
+    
+    with open(FEATURES_PATH / "llm_output.html", "r") as infile:
+        llm_output = infile.read()
 
     sorted_combined_feature_importances_filepath = FEATURES_PATH / "sorted_combined_feature_importances.csv"
     sorted_combined_feature_importances_table = generate_html_table(sorted_combined_feature_importances_filepath)
@@ -27,7 +30,7 @@ def generate_explanation_report():
     html = "<html>\n"
     html += "<head>\n"
     html += "<meta charset='UTF-8'>"
-    html += "<title>ERDRE - Virtual sensors</title>"
+    html += "<title>Model prediction and explanation</title>"
     html += "<link href='../../src/static/style.css' rel='stylesheet' type='text/css' title='Stylesheet'>"
     html += "<link rel='icon' type='image/png' href='../../src/static/favicon.png'>"
     html += "<script src='../../src/static/jquery.js'></script>"
@@ -40,9 +43,10 @@ def generate_explanation_report():
     html += "<h1>Model prediction and explanations</h1>"
     html += "</div>"
     html += "<nav>"
+    html += "    <a href='#featureimportancestable'>Feature importances table</a>"
     html += "    <a href='#prediction'>True vs predicted values</a>"
     html += "    <a href='#featureimportanceschart'>Feature importances chart</a>"
-    html += "    <a href='#featureimportancestable'>Feature importances table</a>"
+    html += "    <a href='#llmoutput'>Natural language explanation</a>"
     html += "</nav>"
     html += "</header>"
 
@@ -61,6 +65,13 @@ def generate_explanation_report():
     html += "<div class=box>"
     html += "<h2 id='featureimportanceschart'>Feature importances chart</h2>"
     html += feature_importances_plot
+    html += "</div>"
+
+    html += "<div class=box>"
+    html += "<h2 id='llmoutput'>Natural language summary and explanation</h2>"
+    html += "<div style='margin: 2em 2em 2em 2em;'>"
+    html += llm_output
+    html += "</div>"
     html += "</div>"
 
     html += "</body>"
