@@ -139,7 +139,7 @@ def remove_features(dfs, removable_features):
     for df in dfs:
 
         # If the first column is an index column, remove it.
-        if df.iloc[:, 0].is_monotonic:
+        if df.iloc[:, 0].is_monotonic_increasing:
             df = df.iloc[:, 1:]
 
         for column in removable_features:
@@ -206,7 +206,7 @@ def parse_profile_warnings():
         messages = profile_json["alerts"]
 
     variables = list(profile_json["variables"].keys())
-    correlations = profile_json["correlations"]["pearson"]
+    correlations = profile_json["correlations"]["auto"]
 
     removable_features = []
 

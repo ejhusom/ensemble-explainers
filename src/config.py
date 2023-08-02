@@ -179,3 +179,6 @@ OUTPUT_SCALER_PATH = SCALER_PATH / "output_scaler.z"
 
 ADEQUATE_MODELS_PATH = ASSETS_PATH / "adequate_models"
 """Path to list of adequate models."""
+
+ADEQUATE_MODELS_FILE_PATH = ADEQUATE_MODELS_PATH / "adequate_models.json"
+"""Path to list of adequate models."""
