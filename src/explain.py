@@ -27,7 +27,6 @@ import tensorflow as tf
 import yaml
 from joblib import load
 from lime import submodular_pick
-from matplotlib.colors import LinearSegmentedColormap
 from tensorflow.keras import models
 
 tf.compat.v1.disable_v2_behavior()
@@ -49,15 +48,11 @@ from config import (
 
 colors = []
 
-
 for l in np.linspace(1, 0, 100):
     colors.append((30.0 / 255, 136.0 / 255, 229.0 / 255, l))
 
 for l in np.linspace(0, 1, 100):
     colors.append((255.0 / 255, 13.0 / 255, 87.0 / 255, l))
-
-red_transparent_blue = LinearSegmentedColormap.from_list("red_transparent_blue", colors)
-
 
 def explain(
     model_filepath,

@@ -111,5 +111,5 @@
  explain: 
      number_of_background_samples: 100
      number_of_summary_samples: 100
-     explanation_method: shap
+     explanation_method: lime
      seed: 2020
