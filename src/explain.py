@@ -103,9 +103,6 @@ class Explain:
 
         feature_importances = []
 
-        # Variables for saving n most important features for all models
-        # sorted_feature_importances = {}
-
         for name in model_names:
             if name in self.adequate_models.keys():
                 method = os.path.splitext(name)[0].split("_")[-1]
@@ -124,44 +121,13 @@ class Explain:
                 if self.params.explain.explanation_method == "all":
                     self.params.explain.explanation_method = EXPLANATION_METHODS
 
-                # If the user wants to use multiple explanation methods, we
-                # must generate multiple sets of feature improtances
-                if isinstance(self.params.explain.explanation_method, list):
-                    # sets_of_feature_importances = []
-                    for explanation_method in self.params.explain.explanation_method:
-                        xai_values = self.explain_predictions(model,
-                                explanation_method, make_plots=True)
-                        column_label = explanation_method + "_" + method
-                        feature_importance = get_feature_importance(
-                            xai_values, label=column_label
-                        )
-                        # sets_of_feature_importances.append(feature_importance)
 
-                        # Scale feature importances to range of [0, 1]
-                        feature_importance = feature_importance.div(
-                            feature_importance.sum(axis=0), axis=1
-                        )
-
-                        sorted_feature_importance = feature_importance.sort_values(
-                            by=f"feature_importance_{column_label}", ascending=False
-                        )
-                        sorted_feature_importance.to_csv(
-                            FEATURES_PATH / f"sorted_feature_importance_{method}.csv"
-                        )
-
-                        # sorted_feature_importances[method] = sorted_feature_importance
-
-                        feature_importance = feature_importance.transpose()
-                        feature_importances.append(feature_importance)
-
-                    # combined_sets_of_feature_importances = pd.concat(sets_of_feature_importances, axis=1)
-                    # print(combined_sets_of_feature_importances)
-                    # breakpoint()
-
-                else:
+                if not isinstance(self.params.explain.explanation_method, list):
+                    self.params.explain.explanation_method = list(self.params.explain.explanation_method)
+                for explanation_method in self.params.explain.explanation_method:
                     xai_values = self.explain_predictions(model,
-                            self.params.explain.explanation_method, make_plots=True)
-                    column_label = self.params.explain.explanation_method + "_" + method
+                            explanation_method, make_plots=True)
+                    column_label = explanation_method + "_" + method
                     feature_importance = get_feature_importance(
                         xai_values, label=column_label
                     )
@@ -175,10 +141,9 @@ class Explain:
                         by=f"feature_importance_{column_label}", ascending=False
                     )
                     sorted_feature_importance.to_csv(
-                        FEATURES_PATH / f"sorted_feature_importance_{method}.csv"
+                        FEATURES_PATH /
+                        f"sorted_feature_importance_{column_label}.csv"
                     )
-
-                    # sorted_feature_importances[method] = sorted_feature_importance
 
                     feature_importance = feature_importance.transpose()
                     feature_importances.append(feature_importance)
@@ -222,23 +187,6 @@ class Explain:
                 model,
                 make_plots=make_plots,
             )
-        # elif self.params.explain.explanation_method == "all":
-        #     xai_values_shap = self.explain_predictions_shap(
-        #         model,
-        #         make_plots=make_plots,
-        #     )
-        #     xai_values_lime = self.explain_predictions_lime(
-        #         model,
-        #         make_plots=make_plots,
-        #     )
-        #     print(xai_values_shap.shape)
-        #     print(xai_values_lime.shape)
-
-        #     print(xai_values_shap)
-        #     print(xai_values_lime)
-
-        #     xai_values = [xai_values_shap, xai_values_lime]
-
         else:
             raise NotImplementedError(
                 f"Explanation method {method} is not implemented."
