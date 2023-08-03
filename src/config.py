@@ -84,6 +84,10 @@ METHODS_IN_ENSEMBLE = [
     # "kn",
 ]
 
+EXPLANATION_METHODS = [
+    "shap",
+    "lime",
+]
 
 # PATHS
 

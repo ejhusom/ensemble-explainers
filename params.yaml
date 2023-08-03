@@ -109,7 +109,7 @@
      show_inputs: False
 
  explain: 
-     number_of_background_samples: 100
-     number_of_summary_samples: 100
-     explanation_method: lime
+     number_of_background_samples: 10
+     number_of_summary_samples: 10
+     explanation_method: all
      seed: 2020

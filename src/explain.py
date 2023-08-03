@@ -34,6 +34,7 @@ tf.compat.v1.disable_v2_behavior()
 from config import (
     ADEQUATE_MODELS_FILE_PATH,
     DL_METHODS,
+    EXPLANATION_METHODS,
     FEATURES_PATH,
     INPUT_FEATURES_PATH,
     INPUT_FEATURES_SEQUENCE_PATH,
@@ -45,17 +46,16 @@ from config import (
     PLOTS_PATH,
     SEQUENCE_LEARNING_METHODS,
 )
-
 from utils import Struct
 
-class Explain():
 
-    def __init__(self,
-            model_filepath,
-            train_filepath,
-            test_filepath,
+class Explain:
+    def __init__(
+        self,
+        model_filepath,
+        train_filepath,
+        test_filepath,
     ):
-
         self.model_filepath = model_filepath
         self.train_filepath = train_filepath
         self.test_filepath = test_filepath
@@ -73,21 +73,20 @@ class Explain():
         self.X_test = self.test_data["X"]
         self.y_test = self.test_data["y"]
 
-        # Read name of input columns
-        self.input_columns = pd.read_csv(INPUT_FEATURES_PATH, header=None)
-        # Convert the input columns into a list
-        self.input_columns = self.input_columns.iloc[1:, 1].to_list()
+        # Read name of input columns and convert to list
+        self.input_columns = pd.read_csv(INPUT_FEATURES_PATH, index_col=0)
+        self.input_columns = self.input_columns.values.flatten().tolist()
 
         if self.params.train.ensemble:
             self.explain_ensemble()
         else:
-
             if self.params.train.learning_method in NON_DL_METHODS:
                 model = load(self.model_filepath)
             else:
                 model = models.load_model(self.model_filepath)
 
-            self.explain_predictions(model)
+            xai_values = self.explain_predictions(model)
+
 
     def explain_ensemble(self):
         with open(ADEQUATE_MODELS_FILE_PATH, "r") as f:
@@ -105,7 +104,7 @@ class Explain():
         feature_importances = []
 
         # Variables for saving n most important features for all models
-        sorted_feature_importances = {}
+        # sorted_feature_importances = {}
 
         for name in model_names:
             if name in self.adequate_models.keys():
@@ -119,31 +118,73 @@ class Explain():
                     model = load(MODELS_PATH / name)
 
                 print(f"Explaining {method}")
-                shap_values = self.explain_predictions(model, make_plots=True)
 
-                feature_importance = get_feature_importance(shap_values,
-                        self.input_columns, label=method)
+                # If user has chosen to use all explanation methods, set the
+                # parameter accordingly
+                if self.params.explain.explanation_method == "all":
+                    self.params.explain.explanation_method = EXPLANATION_METHODS
 
-                # Scale feature importances to range of [0, 1]
-                feature_importance = feature_importance.div(feature_importance.sum(axis=0), axis=1)
+                # If the user wants to use multiple explanation methods, we
+                # must generate multiple sets of feature improtances
+                if isinstance(self.params.explain.explanation_method, list):
+                    # sets_of_feature_importances = []
+                    for explanation_method in self.params.explain.explanation_method:
+                        xai_values = self.explain_predictions(model,
+                                explanation_method, make_plots=True)
+                        column_label = explanation_method + "_" + method
+                        feature_importance = get_feature_importance(
+                            xai_values, label=column_label
+                        )
+                        # sets_of_feature_importances.append(feature_importance)
 
-                # Save the ten most important features
-                sorted_feature_importance = feature_importance.sort_values(
-                        by=f"feature_importance_{method}", 
-                        ascending=False
-                )
-                sorted_feature_importance.to_csv(FEATURES_PATH /
-                        f"sorted_feature_importance_{method}.csv")
+                        # Scale feature importances to range of [0, 1]
+                        feature_importance = feature_importance.div(
+                            feature_importance.sum(axis=0), axis=1
+                        )
 
-                sorted_feature_importances[method] = sorted_feature_importance
+                        sorted_feature_importance = feature_importance.sort_values(
+                            by=f"feature_importance_{column_label}", ascending=False
+                        )
+                        sorted_feature_importance.to_csv(
+                            FEATURES_PATH / f"sorted_feature_importance_{method}.csv"
+                        )
 
+                        # sorted_feature_importances[method] = sorted_feature_importance
 
-                feature_importance = feature_importance.transpose()
-                feature_importances.append(feature_importance)
+                        feature_importance = feature_importance.transpose()
+                        feature_importances.append(feature_importance)
 
-        print(feature_importances)
+                    # combined_sets_of_feature_importances = pd.concat(sets_of_feature_importances, axis=1)
+                    # print(combined_sets_of_feature_importances)
+                    # breakpoint()
+
+                else:
+                    xai_values = self.explain_predictions(model,
+                            self.params.explain.explanation_method, make_plots=True)
+                    column_label = self.params.explain.explanation_method + "_" + method
+                    feature_importance = get_feature_importance(
+                        xai_values, label=column_label
+                    )
+
+                    # Scale feature importances to range of [0, 1]
+                    feature_importance = feature_importance.div(
+                        feature_importance.sum(axis=0), axis=1
+                    )
+
+                    sorted_feature_importance = feature_importance.sort_values(
+                        by=f"feature_importance_{column_label}", ascending=False
+                    )
+                    sorted_feature_importance.to_csv(
+                        FEATURES_PATH / f"sorted_feature_importance_{method}.csv"
+                    )
+
+                    # sorted_feature_importances[method] = sorted_feature_importance
+
+                    feature_importance = feature_importance.transpose()
+                    feature_importances.append(feature_importance)
+
+        # Concat feature importance dataframe for all learning methods
         feature_importances = pd.concat(feature_importances)
-
         feature_importances.to_csv(FEATURES_PATH / "feature_importances.csv")
 
         pd.options.plotting.backend = "plotly"
@@ -152,7 +193,7 @@ class Explain():
         fig.show()
 
         adequate_methods = sorted(adequate_methods)
-        
+
         # generate_ensemble_explanation_tables(sorted_combined_feature_importances,
         #         adequate_methods)
 
@@ -163,33 +204,54 @@ class Explain():
             if index.split("_")[-1] not in adequate_methods:
                 feature_importances.drop(index, inplace=True)
 
-        combine_explanations(feature_importances)
+        combine_ensemble_explanations(feature_importances)
 
     def explain_predictions(
-            self,
-            model,
-            make_plots=True,
+        self,
+        model,
+        method="shap",
+        make_plots=True,
     ):
-
-        if self.params.explain.explanation_method == "shap":
+        if method == "shap":
             xai_values = self.explain_predictions_shap(
                 model,
                 make_plots=make_plots,
             )
-        elif self.params.explain.explanation_method == "lime":
+        elif method == "lime":
             xai_values = self.explain_predictions_lime(
                 model,
                 make_plots=make_plots,
             )
+        # elif self.params.explain.explanation_method == "all":
+        #     xai_values_shap = self.explain_predictions_shap(
+        #         model,
+        #         make_plots=make_plots,
+        #     )
+        #     xai_values_lime = self.explain_predictions_lime(
+        #         model,
+        #         make_plots=make_plots,
+        #     )
+        #     print(xai_values_shap.shape)
+        #     print(xai_values_lime.shape)
+
+        #     print(xai_values_shap)
+        #     print(xai_values_lime)
+
+        #     xai_values = [xai_values_shap, xai_values_lime]
+
         else:
-            raise NotImplementedError(f"Explanation method {explanation_method} is not implemented.")
+            raise NotImplementedError(
+                f"Explanation method {method} is not implemented."
+            )
 
         return xai_values
 
     def explain_predictions_shap(self, model, make_plots=False):
-
-        X_test_summary = shap.sample(self.X_test, self.params.explain.number_of_summary_samples,
-                random_state=self.explain.seed)
+        X_test_summary = shap.sample(
+            self.X_test,
+            self.params.explain.number_of_summary_samples,
+            random_state=self.params.explain.seed,
+        )
 
         if self.params.train.learning_method in NON_SEQUENCE_LEARNING_METHODS:
             if self.params.sequentialize.window_size > 1:
@@ -199,7 +261,7 @@ class Explain():
                     for i in range(self.params.sequentialize.window_size):
                         input_columns_sequence.append(c + f"_{i}")
 
-                input_columns = input_columns_sequence
+                self.input_columns = input_columns_sequence
 
             # Extract a summary of the training inputs, to reduce the amount of
             # compute needed to use SHAP
@@ -211,14 +273,13 @@ class Explain():
             print(self.params.train.learning_method)
             # explainer = shap.TreeExplainer(model, X_train_background)
 
-            print("1 ============")
             # Single prediction explanation
             single_sample = self.X_test[0]
-            print(single_sample.shape)
             single_shap_value = explainer.shap_values(single_sample)
+            # Shap values for summary of test data
             shap_values = explainer.shap_values(X_test_summary)
 
-            if type(single_shap_value) == list:
+            if isinstance(single_shap_value, list):
                 single_shap_value = single_shap_value[0]
                 shap_values = shap_values[0]
 
@@ -229,10 +290,11 @@ class Explain():
                     single_shap_value,
                     np.around(single_sample),
                     show=True,
-                    feature_names=input_columns,
+                    feature_names=self.input_columns,
                 )
                 shap.save_html(
-                    str(PLOTS_PATH) + "/shap_force_plot_single.html", shap_force_plot_single
+                    str(PLOTS_PATH) + "/shap_force_plot_single.html",
+                    shap_force_plot_single,
                 )
 
                 # SHAP force plot: Multiple prediction
@@ -241,20 +303,22 @@ class Explain():
                     shap_values,
                     X_test_summary,
                     show=True,
-                    feature_names=input_columns,
+                    feature_names=self.input_columns,
                 )
-                shap.save_html(str(PLOTS_PATH) + "/shap_force_plot.html", shap_force_plot)
+                shap.save_html(
+                    str(PLOTS_PATH) + "/shap_force_plot.html", shap_force_plot
+                )
 
                 # SHAP summary plot
                 shap.summary_plot(
                     shap_values,
                     X_test_summary,
-                    feature_names=input_columns,
+                    feature_names=self.input_columns,
                     plot_size=(8, 5),
                     show=False,
                     max_display=10,
                 )
-                plt.xticks(rotation = 45)
+                plt.xticks(rotation=45)
                 plt.tight_layout()
 
                 plt.savefig(
@@ -264,8 +328,11 @@ class Explain():
         else:
             # Extract a summary of the training inputs, to reduce the amount of
             # compute needed to use SHAP
-            X_train_background = shap.sample(self.X_train, self.params.explain.number_of_background_samples,
-                    random_state=self.params.explain.seed)
+            X_train_background = shap.sample(
+                self.X_train,
+                self.params.explain.number_of_background_samples,
+                random_state=self.params.explain.seed,
+            )
 
             # Use a SHAP explainer on the summary of training inputs
             explainer = shap.DeepExplainer(model, X_train_background)
@@ -284,7 +351,8 @@ class Explain():
                     feature_names=self.input_columns,
                 )
                 shap.save_html(
-                    str(PLOTS_PATH) + "/shap_force_plot_single.html", shap_force_plot_single
+                    str(PLOTS_PATH) + "/shap_force_plot_single.html",
+                    shap_force_plot_single,
                 )
 
                 # Expand dimensions with 1 in order to plot. The built-in
@@ -305,10 +373,12 @@ class Explain():
                     PLOTS_PATH / "shap_image_plot.png", bbox_inches="tight", dpi=300
                 )
 
+        shap_values = pd.DataFrame(shap_values,
+                columns=self.input_columns).sort_index(axis=1)
+
         return shap_values
 
     def explain_predictions_lime(self, model, make_plots=False):
-
         if self.params.clean.classification:
             mode = "classification"
         else:
@@ -316,30 +386,42 @@ class Explain():
 
         if self.params.sequentialize.window_size == 1:
             lime_explainer = lime.lime_tabular.LimeTabularExplainer(
-                    self.X_train,
-                    feature_names=self.input_columns,
-                    mode=mode,
-                    discretize_continuous=False,
+                self.X_test,
+                feature_names=self.input_columns,
+                mode=mode,
+                discretize_continuous=False,
             )
         else:
             lime_explainer = lime.lime_tabular.LimeRecurrentTabularExplainer(
-                    self.X_train,
-                    feature_names=self.input_columns,
-                    mode=mode,
-                    discretize_continuous=False,
+                self.X_test,
+                feature_names=self.input_columns,
+                mode=mode,
+                discretize_continuous=False,
             )
 
-        sp_obj = lime.submodular_pick.SubmodularPick(lime_explainer, self.X_train,
-            model.predict, sample_size=self.params.explain.number_of_background_samples)
+        sp_obj = lime.submodular_pick.SubmodularPick(
+            lime_explainer,
+            self.X_test,
+            model.predict,
+            sample_size=self.params.explain.number_of_background_samples,
+            num_features=self.X_test.shape[-1],
+        )
 
-        # Making a dataframe of all the explanations of sampled points
-        xai_values = pd.DataFrame([dict(this.as_list()) for this in sp_obj.explanations]).fillna(0)
+        # Making a dataframe of all the explanations of sampled points.
+        xai_values = pd.DataFrame(
+            [dict(this.as_list()) for this in sp_obj.explanations]
+        ).fillna(0).sort_index(axis=1)
 
         if make_plots:
-            ##Plotting the aggregate importances
-            avg_xai_values = np.abs(xai_values).mean(axis=0).sort_values(ascending=False).head(
-                25
-            ).sort_values(ascending=True).plot(kind="barh")
+            # Plotting the aggregate importances
+            avg_xai_values = (
+                np.abs(xai_values)
+                .mean(axis=0)
+                .sort_values(ascending=False)
+                .head(25)
+                .sort_values(ascending=True)
+                .plot(kind="barh")
+            )
             # plt.show()
 
             plt.savefig(
@@ -348,20 +430,26 @@ class Explain():
 
         return xai_values
 
-def get_feature_importance(shap_values, column_names, label=""):
-    # Source: https://github.com/slundberg/shap/issues/632
 
-    vals = np.abs(shap_values).mean(0)
-    feature_importance = pd.DataFrame(list(zip(column_names, vals)),columns=['col_name',f"feature_importance_{label}"])
-    feature_importance.sort_values(by=[f"feature_importance_{label}"], ascending=False, inplace=True)
+def get_feature_importance(xai_values, label=""):
+    # Modified from: https://github.com/slundberg/shap/issues/632
+
+    vals = np.abs(xai_values).mean(0)
+    feature_importance = pd.DataFrame(
+        list(zip(xai_values.columns.tolist(), vals)),
+        columns=["col_name", f"feature_importance_{label}"],
+    )
+
+    # feature_importance.sort_values(
+    #     by=[f"feature_importance_{label}"], ascending=False, inplace=True
+    # )
+
     feature_importance = feature_importance.set_index("col_name")
 
     return feature_importance
 
-def combine_explanations(
-        feature_importances,
-        method="avg"
-    ):
+
+def combine_ensemble_explanations(feature_importances, method="avg"):
     """Combine explanations from ensemble.
 
     Args:
@@ -370,37 +458,37 @@ def combine_explanations(
 
     """
 
-    feature_importances.fillna(0, inplace=True) 
+    feature_importances.fillna(0, inplace=True)
 
     if method == "avg":
-        combined_feature_importances = feature_importances.mean(0,
-                numeric_only=True)
+        combined_feature_importances = feature_importances.mean(0, numeric_only=True)
     else:
-        print(" -- Using default combination method: average")
-        combined_feature_importances = feature_importances.mean(0,
-                numeric_only=True)
+        print("Using default combination method: average")
+        combined_feature_importances = feature_importances.mean(0, numeric_only=True)
 
-    # Save the ten most important features
     sorted_combined_feature_importances = combined_feature_importances.sort_values(
-            ascending=False
+        ascending=False
     )
-    sorted_combined_feature_importances.to_csv(FEATURES_PATH /
-            "sorted_combined_feature_importances.csv")
-
-    print(sorted_combined_feature_importances)
+    sorted_combined_feature_importances.to_csv(
+        FEATURES_PATH / "sorted_combined_feature_importances.csv"
+    )
 
     return sorted_combined_feature_importances
 
-def generate_explanation_report():
 
+def generate_explanation_report():
     with open(PLOTS_PATH / "prediction.html", "r") as infile:
         prediction_plot = infile.read()
 
     with open(PLOTS_PATH / "feature_importances.html", "r") as infile:
         feature_importances_plot = infile.read()
 
-    sorted_combined_feature_importances_filepath = FEATURES_PATH / "sorted_combined_feature_importances.csv"
-    sorted_combined_feature_importances_table = generate_html_table(sorted_combined_feature_importances_filepath)
+    sorted_combined_feature_importances_filepath = (
+        FEATURES_PATH / "sorted_combined_feature_importances.csv"
+    )
+    sorted_combined_feature_importances_table = generate_html_table(
+        sorted_combined_feature_importances_filepath
+    )
 
     html = "<html>\n"
     html += "<head>\n"
@@ -447,6 +535,7 @@ def generate_explanation_report():
     with open("assets/plots/report.html", "w") as outfile:
         outfile.write(html)
 
+
 def generate_html_table(csv_file):
     table_html = "<table>\n"
     with open(csv_file, "r") as file:
@@ -473,8 +562,8 @@ def generate_html_table(csv_file):
     table_html += "</table>"
     return table_html
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     if len(sys.argv) < 3:
         try:
             Explain(
@@ -487,4 +576,3 @@ if __name__ == "__main__":
             sys.exit(1)
     else:
         Explain(sys.argv[1], sys.argv[2], sys.argv[3])
-
