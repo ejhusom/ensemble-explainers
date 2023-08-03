@@ -78,7 +78,7 @@
  train:
      seed: 2023
      learning_method: gradientboosting
-     ensemble: True
+     ensemble: False
      hyperparameter_tuning: False
 
      # Parameters for deep learning (dnn, cnn, rnn):

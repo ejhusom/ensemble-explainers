@@ -80,12 +80,53 @@ class Explain:
         if self.params.train.ensemble:
             self.explain_ensemble()
         else:
+            feature_importances = []
+
             if self.params.train.learning_method in NON_DL_METHODS:
                 model = load(self.model_filepath)
             else:
                 model = models.load_model(self.model_filepath)
 
-            xai_values = self.explain_predictions(model)
+            if self.params.explain.explanation_method == "all":
+                self.params.explain.explanation_method = EXPLANATION_METHODS
+
+            if not isinstance(self.params.explain.explanation_method, list):
+                self.params.explain.explanation_method = [self.params.explain.explanation_method]
+
+            for explanation_method in self.params.explain.explanation_method:
+                xai_values = self.explain_predictions(model,
+                        explanation_method, make_plots=True)
+                column_label = explanation_method + "_" + self.params.train.learning_method
+                feature_importance = get_feature_importance(
+                    xai_values, label=column_label
+                )
+
+                # Scale feature importances to range of [0, 1]
+                feature_importance = feature_importance.div(
+                    feature_importance.sum(axis=0), axis=1
+                )
+
+                sorted_feature_importance = feature_importance.sort_values(
+                    by=f"feature_importance_{column_label}", ascending=False
+                )
+                sorted_feature_importance.to_csv(
+                    FEATURES_PATH /
+                    f"sorted_feature_importance_{column_label}.csv"
+                )
+
+                feature_importance = feature_importance.transpose()
+                feature_importances.append(feature_importance)
+
+            # Concat feature importance dataframe for all learning methods
+            feature_importances = pd.concat(feature_importances)
+            feature_importances.to_csv(FEATURES_PATH / "feature_importances.csv")
+
+            pd.options.plotting.backend = "plotly"
+            fig = feature_importances.plot.bar()
+            fig.write_html(str(PLOTS_PATH / "feature_importances.html"))
+            fig.show()
+
+            generate_explanation_report()
 
 
     def explain_ensemble(self):
@@ -121,9 +162,8 @@ class Explain:
                 if self.params.explain.explanation_method == "all":
                     self.params.explain.explanation_method = EXPLANATION_METHODS
 
-
                 if not isinstance(self.params.explain.explanation_method, list):
-                    self.params.explain.explanation_method = list(self.params.explain.explanation_method)
+                    self.params.explain.explanation_method = [self.params.explain.explanation_method]
                 for explanation_method in self.params.explain.explanation_method:
                     xai_values = self.explain_predictions(model,
                             explanation_method, make_plots=True)
