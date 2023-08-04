@@ -566,5 +566,3 @@ if __name__ == "__main__":
     np.random.seed(2022)
 
     train(sys.argv[1])
-
-

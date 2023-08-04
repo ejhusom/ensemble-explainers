@@ -33,7 +33,6 @@ from sklearn.metrics import (
     explained_variance_score,
     mean_absolute_percentage_error,
     mean_squared_error,
-    precision_score,
     r2_score,
 )
 from sklearn.neighbors import KNeighborsRegressor
@@ -305,7 +304,6 @@ def evaluate(model_filepath, train_filepath, test_filepath):
         pass
 
     save_predictions(pd.DataFrame(y_pred))
-
 
 def plot_confusion(y_test, y_pred):
     """Plotting confusion matrix of a classification model."""

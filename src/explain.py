@@ -178,11 +178,7 @@ class Explain:
                         xai_values, label=column_label
                     )
 
-                    d = get_directional_feature_importance(xai_values,
-                            label=column_label)
-
-                    feature_importance.to_csv(f"t1_{column_label}.csv")
-                    d.to_csv(f"t2_{column_label}.csv")
+                    pos_feature_importance, neg_feature_importance = get_directional_feature_importance(xai_values, label=column_label)
 
                     # Scale feature importances to range of [0, 1]
                     feature_importance = feature_importance.div(
@@ -192,8 +188,21 @@ class Explain:
                     sorted_feature_importance = feature_importance.sort_values(
                         by=f"feature_importance_{column_label}", ascending=False
                     )
+                    sorted_pos_feature_importance = pos_feature_importance.sort_values(
+                        ascending=False
+                    )
+                    sorted_neg_feature_importance = neg_feature_importance.sort_values(
+                        ascending=False
+                    )
+
                     sorted_feature_importance.to_csv(
                         FEATURES_PATH / f"sorted_feature_importance_{column_label}.csv"
+                    )
+                    sorted_pos_feature_importance.to_csv(
+                        FEATURES_PATH / f"sorted_pos_feature_importance_{column_label}.csv"
+                    )
+                    sorted_neg_feature_importance.to_csv(
+                        FEATURES_PATH / f"sorted_neg_feature_importance_{column_label}.csv"
                     )
 
                     feature_importance = feature_importance.transpose()
@@ -326,19 +335,6 @@ class Explain:
                     PLOTS_PATH / "shap_summary_plot.png", bbox_inches="tight", dpi=300
                 )
 
-                # for feature in self.input_columns:
-                #     shap.dependence_plot(
-                #         feature,
-                #         shap_values,
-                #         X_test_summary,
-                #         feature_names=self.input_columns,
-                #         # plot_size=(8, 5),
-                #         show=False,
-                #     )
-                #     plt.savefig(
-                #         PLOTS_PATH / f"shap_dependence_plot_{feature}.png", bbox_inches="tight", dpi=300
-                #     )
-                #     plt.show()
         else:
             # Extract a summary of the training inputs, to reduce the amount of
             # compute needed to use SHAP
@@ -439,7 +435,6 @@ class Explain:
                 .sort_values(ascending=True)
                 .plot(kind="barh")
             )
-            # plt.show()
 
             plt.savefig(
                 PLOTS_PATH / "lime_summary_plot.png", bbox_inches="tight", dpi=300
@@ -466,22 +461,61 @@ def get_feature_importance(xai_values, label=""):
     return feature_importance
 
 def get_directional_feature_importance(xai_values, label=""):
-    # Modified from: https://github.com/slundberg/shap/issues/632
 
-    # vals = np.abs(xai_values).mean(0)
-    vals = xai_values.mean(0)
-    feature_importance = pd.DataFrame(
-        list(zip(xai_values.columns.tolist(), vals)),
-        columns=["col_name", f"feature_importance_{label}"],
-    )
+    print(xai_values)
 
-    # feature_importance.sort_values(
-    #     by=[f"feature_importance_{label}"], ascending=False, inplace=True
-    # )
+    # Create separate dataframes for the positive and negative XAI values for
+    # each feature.
+    xai_values_pos = xai_values.copy()
+    xai_values_neg = xai_values.copy()
 
-    feature_importance = feature_importance.set_index("col_name")
+    # Remove negative values in the positive data frame and vice versa.
+    xai_values_pos[xai_values_pos < 0] = 0
+    xai_values_neg[xai_values_neg > 0] = 0
 
-    return feature_importance
+    # Calculate the mean SHAP values for pos/neg separately.
+    pos_feature_importance = xai_values_pos.mean()
+    neg_feature_importance = xai_values_neg.mean()
+
+    # Calculate the sum of absolute average positive and negative SHAP values
+    total_impact = pos_feature_importance.abs() + neg_feature_importance.abs()
+
+    # Get the 10 features with the highest impact
+    top_features = total_impact.nlargest(10).index
+
+    # Extract the positive and negative SHAP values for the top features
+    top_avg_shap_positive = pos_feature_importance[top_features]
+    top_avg_shap_negative = neg_feature_importance[top_features]
+
+    # Create a new figure and set its size
+    plt.figure(figsize=(10, 8))
+
+    # Create an array for the positions of the bars on the y-axis
+    ind = np.arange(len(top_features))
+
+    # Width of a bar
+    width = 0.35
+
+    # Plotting
+    plt.barh(ind, top_avg_shap_positive.values, width, color='b', label='positive')
+    plt.barh(ind, top_avg_shap_negative.values, width, color='r', label='negative')
+
+    # Adding feature names as y labels
+    plt.yticks(ind, top_features)
+
+    plt.axvline(0, color='k')
+    plt.xlabel('Average SHAP value')
+    plt.title('Average positive and negative SHAP values for the top 10 impactful features')
+    plt.legend(loc='best')
+    plt.tight_layout()
+    plt.gca().invert_yaxis()
+    # plt.show()
+    plt.savefig(PLOTS_PATH / "directional_feature_importance.png")
+
+    pos_feature_importance.name = "feature_importance_" + label
+    neg_feature_importance.name = "feature_importance_" + label
+
+    return pos_feature_importance, neg_feature_importance
 
 def combine_ensemble_explanations(feature_importances, method="avg"):
     """Combine explanations from ensemble.
