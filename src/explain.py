@@ -130,7 +130,7 @@ class Explain:
             fig.write_html(str(PLOTS_PATH / "feature_importances.html"))
             fig.show()
 
-            generate_explanation_report()
+            # generate_explanation_report()
 
     def explain_ensemble(self):
         with open(ADEQUATE_MODELS_FILE_PATH, "r") as f:
@@ -224,14 +224,14 @@ class Explain:
         # generate_ensemble_explanation_tables(sorted_combined_feature_importances,
         #         adequate_methods)
 
-        generate_explanation_report()
-
         # Delete rows of the models in inadequate_models
         for index, row in feature_importances.iterrows():
             if index.split("_")[-1] not in adequate_methods:
                 feature_importances.drop(index, inplace=True)
 
         combine_ensemble_explanations(feature_importances)
+
+        generate_explanation_report()
 
     def explain_predictions(
         self,
