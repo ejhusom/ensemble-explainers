@@ -91,12 +91,17 @@ class Explain:
                 self.params.explain.explanation_method = EXPLANATION_METHODS
 
             if not isinstance(self.params.explain.explanation_method, list):
-                self.params.explain.explanation_method = [self.params.explain.explanation_method]
+                self.params.explain.explanation_method = [
+                    self.params.explain.explanation_method
+                ]
 
             for explanation_method in self.params.explain.explanation_method:
-                xai_values = self.explain_predictions(model,
-                        explanation_method, make_plots=True)
-                column_label = explanation_method + "_" + self.params.train.learning_method
+                xai_values = self.explain_predictions(
+                    model, explanation_method, make_plots=True
+                )
+                column_label = (
+                    explanation_method + "_" + self.params.train.learning_method
+                )
                 feature_importance = get_feature_importance(
                     xai_values, label=column_label
                 )
@@ -110,8 +115,7 @@ class Explain:
                     by=f"feature_importance_{column_label}", ascending=False
                 )
                 sorted_feature_importance.to_csv(
-                    FEATURES_PATH /
-                    f"sorted_feature_importance_{column_label}.csv"
+                    FEATURES_PATH / f"sorted_feature_importance_{column_label}.csv"
                 )
 
                 feature_importance = feature_importance.transpose()
@@ -127,7 +131,6 @@ class Explain:
             fig.show()
 
             generate_explanation_report()
-
 
     def explain_ensemble(self):
         with open(ADEQUATE_MODELS_FILE_PATH, "r") as f:
@@ -163,14 +166,23 @@ class Explain:
                     self.params.explain.explanation_method = EXPLANATION_METHODS
 
                 if not isinstance(self.params.explain.explanation_method, list):
-                    self.params.explain.explanation_method = [self.params.explain.explanation_method]
+                    self.params.explain.explanation_method = [
+                        self.params.explain.explanation_method
+                    ]
                 for explanation_method in self.params.explain.explanation_method:
-                    xai_values = self.explain_predictions(model,
-                            explanation_method, make_plots=True)
+                    xai_values = self.explain_predictions(
+                        model, explanation_method, make_plots=True
+                    )
                     column_label = explanation_method + "_" + method
                     feature_importance = get_feature_importance(
                         xai_values, label=column_label
                     )
+
+                    d = get_directional_feature_importance(xai_values,
+                            label=column_label)
+
+                    feature_importance.to_csv(f"t1_{column_label}.csv")
+                    d.to_csv(f"t2_{column_label}.csv")
 
                     # Scale feature importances to range of [0, 1]
                     feature_importance = feature_importance.div(
@@ -181,8 +193,7 @@ class Explain:
                         by=f"feature_importance_{column_label}", ascending=False
                     )
                     sorted_feature_importance.to_csv(
-                        FEATURES_PATH /
-                        f"sorted_feature_importance_{column_label}.csv"
+                        FEATURES_PATH / f"sorted_feature_importance_{column_label}.csv"
                     )
 
                     feature_importance = feature_importance.transpose()
@@ -193,7 +204,9 @@ class Explain:
         feature_importances.to_csv(FEATURES_PATH / "feature_importances.csv")
 
         pd.options.plotting.backend = "plotly"
-        fig = feature_importances.plot.bar()
+        fig = feature_importances.plot.bar(
+                labels=dict(index="", value="Feature importance (%)")
+        )
         fig.write_html(str(PLOTS_PATH / "feature_importances.html"))
         fig.show()
 
@@ -312,7 +325,20 @@ class Explain:
                 plt.savefig(
                     PLOTS_PATH / "shap_summary_plot.png", bbox_inches="tight", dpi=300
                 )
-                # plt.show()
+
+                # for feature in self.input_columns:
+                #     shap.dependence_plot(
+                #         feature,
+                #         shap_values,
+                #         X_test_summary,
+                #         feature_names=self.input_columns,
+                #         # plot_size=(8, 5),
+                #         show=False,
+                #     )
+                #     plt.savefig(
+                #         PLOTS_PATH / f"shap_dependence_plot_{feature}.png", bbox_inches="tight", dpi=300
+                #     )
+                #     plt.show()
         else:
             # Extract a summary of the training inputs, to reduce the amount of
             # compute needed to use SHAP
@@ -361,8 +387,9 @@ class Explain:
                     PLOTS_PATH / "shap_image_plot.png", bbox_inches="tight", dpi=300
                 )
 
-        shap_values = pd.DataFrame(shap_values,
-                columns=self.input_columns).sort_index(axis=1)
+        shap_values = pd.DataFrame(shap_values, columns=self.input_columns).sort_index(
+            axis=1
+        )
 
         return shap_values
 
@@ -396,9 +423,11 @@ class Explain:
         )
 
         # Making a dataframe of all the explanations of sampled points.
-        xai_values = pd.DataFrame(
-            [dict(this.as_list()) for this in sp_obj.explanations]
-        ).fillna(0).sort_index(axis=1)
+        xai_values = (
+            pd.DataFrame([dict(this.as_list()) for this in sp_obj.explanations])
+            .fillna(0)
+            .sort_index(axis=1)
+        )
 
         if make_plots:
             # Plotting the aggregate importances
@@ -436,6 +465,23 @@ def get_feature_importance(xai_values, label=""):
 
     return feature_importance
 
+def get_directional_feature_importance(xai_values, label=""):
+    # Modified from: https://github.com/slundberg/shap/issues/632
+
+    # vals = np.abs(xai_values).mean(0)
+    vals = xai_values.mean(0)
+    feature_importance = pd.DataFrame(
+        list(zip(xai_values.columns.tolist(), vals)),
+        columns=["col_name", f"feature_importance_{label}"],
+    )
+
+    # feature_importance.sort_values(
+    #     by=[f"feature_importance_{label}"], ascending=False, inplace=True
+    # )
+
+    feature_importance = feature_importance.set_index("col_name")
+
+    return feature_importance
 
 def combine_ensemble_explanations(feature_importances, method="avg"):
     """Combine explanations from ensemble.

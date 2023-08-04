@@ -161,7 +161,8 @@ stages:
         - assets/models/
         - src/evaluate.py
         - src/config.py
-        # outs:
+        outs:
+          - assets/plots/prediction.html
         # - assets/predictions/predictions.csv
         # - assets/predictions/true_values.csv
         params:

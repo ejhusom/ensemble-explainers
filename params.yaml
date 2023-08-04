@@ -78,7 +78,7 @@
  train:
      seed: 2023
      learning_method: gradientboosting
-     ensemble: False
+     ensemble: True
      hyperparameter_tuning: False
 
      # Parameters for deep learning (dnn, cnn, rnn):
@@ -109,7 +109,7 @@
      show_inputs: False
 
  explain: 
-     number_of_background_samples: 10
-     number_of_summary_samples: 10
-     explanation_method: all
+     number_of_background_samples: 100
+     number_of_summary_samples: 100
+     explanation_method: shap
      seed: 2020
